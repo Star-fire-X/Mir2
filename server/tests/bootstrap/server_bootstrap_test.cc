@@ -1,6 +1,5 @@
-#include "server/config/config_manager.h"
-
 #include "gtest/gtest.h"
+#include "server/config/config_manager.h"
 
 namespace server {
 namespace {

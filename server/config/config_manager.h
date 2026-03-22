@@ -1,5 +1,5 @@
-#ifndef MIR2_SERVER_CONFIG_CONFIG_MANAGER_H_
-#define MIR2_SERVER_CONFIG_CONFIG_MANAGER_H_
+#ifndef SERVER_CONFIG_CONFIG_MANAGER_H_
+#define SERVER_CONFIG_CONFIG_MANAGER_H_
 
 namespace server {
 
@@ -15,4 +15,4 @@ class ConfigManager {
 
 }  // namespace server
 
-#endif  // MIR2_SERVER_CONFIG_CONFIG_MANAGER_H_
+#endif  // SERVER_CONFIG_CONFIG_MANAGER_H_

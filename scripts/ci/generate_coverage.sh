@@ -7,6 +7,9 @@ GENERATOR="${GENERATOR:-Ninja}"
 BUILD_TYPE="${BUILD_TYPE:-Debug}"
 REPORT_DIR="${REPORT_DIR:-${ROOT_DIR}/artifacts/coverage}"
 
+# Support tools installed with: python3 -m pip install --user <tool>
+export PATH="$HOME/.local/bin:$PATH"
+
 if [[ ! -f "${ROOT_DIR}/CMakeLists.txt" ]]; then
   echo "::notice::CMakeLists.txt not found at repository root. Skipping coverage."
   exit 0
@@ -36,6 +39,10 @@ gcovr \
   --object-directory "${BUILD_DIR}" \
   --exclude ".*build-coverage.*" \
   --exclude ".*/third_party/.*" \
+  --exclude-directories ".*/CMakeFiles/.*" \
+  --exclude-directories ".*/_deps/.*" \
+  --gcov-ignore-errors=no_working_dir_found \
   --print-summary \
-  --xml-pretty "${REPORT_DIR}/coverage.xml" \
+  --xml-pretty \
+  --output "${REPORT_DIR}/coverage.xml" \
   --html-details "${REPORT_DIR}/coverage.html"

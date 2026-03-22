@@ -2,8 +2,6 @@
 
 namespace server {
 
-bool ConfigManager::IsLoaded() const {
-  return is_loaded_;
-}
+bool ConfigManager::IsLoaded() const { return is_loaded_; }
 
 }  // namespace server
