@@ -1,4 +1,5 @@
 #include <array>
+#include <concepts>
 #include <cstdint>
 #include <set>
 #include <sstream>
@@ -6,10 +7,25 @@
 #include "gtest/gtest.h"
 
 #include "shared/protocol/message_ids.h"
+#include "shared/protocol/scene_messages.h"
 #include "shared/types/entity_id.h"
 
 namespace server {
 namespace {
+
+namespace shared_contract {
+
+template <typename T>
+concept HasControlledEntityId = requires(T value) {
+  { value.controlled_entity_id } -> std::same_as<shared::EntityId&>;
+};
+
+template <typename T>
+concept HasVisibleEntityKind = requires(T value) {
+  value.kind;
+};
+
+}  // namespace shared_contract
 
 TEST(SharedContractTest, EntityIdIsComparableAndPrintable) {
   const shared::EntityId low{1};
@@ -43,6 +59,16 @@ TEST(SharedContractTest, MessageIdsAreUnique) {
   }
 
   EXPECT_EQ(unique_ids.size(), kMessageIds.size());
+}
+
+TEST(SharedContractTest, EnterSceneSnapshotExposesControlledEntityId) {
+  EXPECT_TRUE(
+      (shared_contract::HasControlledEntityId<shared::EnterSceneSnapshot>));
+}
+
+TEST(SharedContractTest, VisibleEntitySnapshotCarriesEntityType) {
+  EXPECT_TRUE(
+      (shared_contract::HasVisibleEntityKind<shared::VisibleEntitySnapshot>));
 }
 
 }  // namespace

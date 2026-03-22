@@ -22,14 +22,23 @@ struct EnterSceneRequest {
   std::uint32_t scene_id = 0;
 };
 
+enum class VisibleEntityKind : std::uint8_t {
+  kUnknown = 0,
+  kPlayer = 1,
+  kMonster = 2,
+  kDrop = 3,
+};
+
 struct VisibleEntitySnapshot {
   EntityId entity_id;
+  VisibleEntityKind kind = VisibleEntityKind::kUnknown;
   ScenePosition position;
 };
 
 struct EnterSceneSnapshot {
   static constexpr MessageId kMessageId = MessageId::kEnterSceneSnapshot;
   PlayerId player_id;
+  EntityId controlled_entity_id;
   std::uint32_t scene_id = 0;
   ScenePosition self_position;
   std::vector<VisibleEntitySnapshot> visible_entities;
