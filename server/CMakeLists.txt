@@ -1,3 +1,18 @@
+add_library(server_data STATIC
+  data/character_data.cc
+  data/inventory.cc)
+
+target_include_directories(server_data PUBLIC ${PROJECT_SOURCE_DIR})
+set_project_warnings(server_data)
+
+add_library(server_db STATIC
+  db/player_repository.cc
+  db/save_service.cc)
+
+target_include_directories(server_db PUBLIC ${PROJECT_SOURCE_DIR})
+target_link_libraries(server_db PUBLIC server_data)
+set_project_warnings(server_db)
+
 add_library(server_config STATIC
   config/config_manager.cc
   config/config_validator.cc)
@@ -11,6 +26,22 @@ set_project_warnings(server_app)
 
 if(BUILD_TESTING)
   add_test(NAME ServerAppSmokeCheck COMMAND $<TARGET_FILE:server_app>)
+
+  add_executable(
+    inventory_test
+    tests/data/inventory_test.cc)
+
+  target_include_directories(inventory_test PRIVATE ${PROJECT_SOURCE_DIR})
+  target_link_libraries(inventory_test PRIVATE server_data GTest::gtest_main)
+  set_project_warnings(inventory_test)
+
+  add_executable(
+    save_service_test
+    tests/data/save_service_test.cc)
+
+  target_include_directories(save_service_test PRIVATE ${PROJECT_SOURCE_DIR})
+  target_link_libraries(save_service_test PRIVATE server_db GTest::gtest_main)
+  set_project_warnings(save_service_test)
 
   add_executable(
     config_validator_test
@@ -51,6 +82,8 @@ if(BUILD_TESTING)
   set_project_warnings(shared_contract_test)
 
   include(GoogleTest)
+  gtest_discover_tests(inventory_test)
+  gtest_discover_tests(save_service_test)
   gtest_discover_tests(config_validator_test)
   gtest_discover_tests(logger_test)
   gtest_discover_tests(server_bootstrap_test)
