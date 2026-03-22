@@ -19,6 +19,14 @@ if(BUILD_TESTING)
             GTest::gtest_main)
   set_project_warnings(server_bootstrap_test)
 
+  add_executable(
+    shared_contract_test
+    tests/protocol/shared_contract_test.cc)
+  target_include_directories(shared_contract_test PRIVATE ${PROJECT_SOURCE_DIR})
+  target_link_libraries(shared_contract_test PRIVATE GTest::gtest_main)
+  set_project_warnings(shared_contract_test)
+
   include(GoogleTest)
   gtest_discover_tests(server_bootstrap_test)
+  gtest_discover_tests(shared_contract_test)
 endif()

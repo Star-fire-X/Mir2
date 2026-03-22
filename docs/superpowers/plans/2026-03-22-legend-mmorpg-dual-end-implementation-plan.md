@@ -188,20 +188,20 @@ git commit -m "chore: bootstrap dual-end project skeleton"
 - Create: `shared/protocol/combat_messages.h`
 - Test: `server/tests/protocol/shared_contract_test.cpp`
 
-- [ ] **Step 1: Write failing contract tests**
+- [x] **Step 1: Write failing contract tests**
 
 ```cpp
 TEST(SharedContractTest, EntityIdIsComparableAndPrintable);
 TEST(SharedContractTest, MessageIdsAreUnique);
 ```
 
-- [ ] **Step 2: Run the new tests**
+- [x] **Step 2: Run the new tests**
 
 Run: `ctest --test-dir build --output-on-failure -R SharedContractTest`
 
 Expected: FAIL because shared headers do not exist
 
-- [ ] **Step 3: Implement ID wrappers and message enums**
+- [x] **Step 3: Implement ID wrappers and message enums**
 
 ```cpp
 struct EntityId {
@@ -210,7 +210,7 @@ struct EntityId {
 };
 ```
 
-- [ ] **Step 4: Define first message families**
+- [x] **Step 4: Define first message families**
 
 Include:
 - login request/response
@@ -220,13 +220,13 @@ Include:
 - pickup request/result
 - inventory delta
 
-- [ ] **Step 5: Re-run contract tests**
+- [x] **Step 5: Re-run contract tests**
 
 Run: `cmake --build build && ctest --test-dir build --output-on-failure -R SharedContractTest`
 
 Expected: PASS
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add shared server/tests/protocol
