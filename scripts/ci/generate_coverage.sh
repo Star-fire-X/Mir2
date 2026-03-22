@@ -6,9 +6,15 @@ BUILD_DIR="${BUILD_DIR:-${ROOT_DIR}/build-coverage}"
 GENERATOR="${GENERATOR:-Ninja}"
 BUILD_TYPE="${BUILD_TYPE:-Debug}"
 REPORT_DIR="${REPORT_DIR:-${ROOT_DIR}/artifacts/coverage}"
+GOOGLETEST_SOURCE_DIR="${GOOGLETEST_SOURCE_DIR:-}"
 
 # Support tools installed with: python3 -m pip install --user <tool>
 export PATH="$HOME/.local/bin:$PATH"
+
+CMAKE_ARGS=()
+if [[ -n "${GOOGLETEST_SOURCE_DIR}" ]]; then
+  CMAKE_ARGS+=("-DFETCHCONTENT_SOURCE_DIR_GOOGLETEST=${GOOGLETEST_SOURCE_DIR}")
+fi
 
 if [[ ! -f "${ROOT_DIR}/CMakeLists.txt" ]]; then
   echo "::notice::CMakeLists.txt not found at repository root. Skipping coverage."
@@ -29,7 +35,8 @@ cmake -S "${ROOT_DIR}" \
   -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
   -DBUILD_TESTING=ON \
   -DCMAKE_C_FLAGS="--coverage -O0 -g" \
-  -DCMAKE_CXX_FLAGS="--coverage -O0 -g"
+  -DCMAKE_CXX_FLAGS="--coverage -O0 -g" \
+  "${CMAKE_ARGS[@]}"
 
 cmake --build "${BUILD_DIR}" --parallel
 ctest --test-dir "${BUILD_DIR}" --output-on-failure

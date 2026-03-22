@@ -73,6 +73,27 @@ jobs:
           path: artifacts/coverage
           if-no-files-found: warn
 
+  clang_tidy:
+    name: Clang-Tidy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build clang clang-tidy ripgrep
+
+      - name: Configure compiler
+        run: |
+          echo "CC=clang" >> "$GITHUB_ENV"
+          echo "CXX=clang++" >> "$GITHUB_ENV"
+
+      - name: Run clang-tidy
+        run: bash scripts/ci/run_clang_tidy.sh
+
   static_analysis:
     name: Static Analysis
     runs-on: ubuntu-latest
@@ -84,7 +105,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build clang clang-tidy clang-format cppcheck python3-pip ripgrep
+          sudo apt-get install -y cmake ninja-build clang clang-format cppcheck python3-pip ripgrep
           python3 -m pip install --upgrade pip
           python3 -m pip install cpplint
 
@@ -95,3 +116,24 @@ jobs:
 
       - name: Run static checks
         run: bash scripts/ci/run_static_checks.sh
+
+  sanitizers:
+    name: Sanitizers
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build clang
+
+      - name: Configure compiler
+        run: |
+          echo "CC=clang" >> "$GITHUB_ENV"
+          echo "CXX=clang++" >> "$GITHUB_ENV"
+
+      - name: Run sanitizers
+        run: bash scripts/ci/run_sanitizers.sh

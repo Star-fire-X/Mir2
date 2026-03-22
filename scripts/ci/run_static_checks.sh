@@ -5,9 +5,15 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 BUILD_DIR="${BUILD_DIR:-${ROOT_DIR}/build-static}"
 GENERATOR="${GENERATOR:-Ninja}"
 BUILD_TYPE="${BUILD_TYPE:-Debug}"
+GOOGLETEST_SOURCE_DIR="${GOOGLETEST_SOURCE_DIR:-}"
 
 # Support tools installed with: python3 -m pip install --user <tool>
 export PATH="$HOME/.local/bin:$PATH"
+
+CMAKE_ARGS=()
+if [[ -n "${GOOGLETEST_SOURCE_DIR}" ]]; then
+  CMAKE_ARGS+=("-DFETCHCONTENT_SOURCE_DIR_GOOGLETEST=${GOOGLETEST_SOURCE_DIR}")
+fi
 
 if [[ ! -f "${ROOT_DIR}/CMakeLists.txt" ]]; then
   echo "::notice::CMakeLists.txt not found at repository root. Skipping static checks."
@@ -33,19 +39,10 @@ cmake -S "${ROOT_DIR}" \
   -G "${GENERATOR}" \
   -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" \
   -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-  -DBUILD_TESTING=ON
+  -DBUILD_TESTING=ON \
+  "${CMAKE_ARGS[@]}"
 
 cmake --build "${BUILD_DIR}" --parallel
-
-mapfile -t TU_FILES < <(printf "%s\n" "${CPP_FILES[@]}" | rg -N "\.(cc|cpp|cxx)$")
-
-if [[ "${#TU_FILES[@]}" -gt 0 ]]; then
-  if ! command -v clang-tidy >/dev/null 2>&1; then
-    echo "clang-tidy is required for static analysis."
-    exit 1
-  fi
-  clang-tidy -p "${BUILD_DIR}" "${TU_FILES[@]}"
-fi
 
 if ! command -v cppcheck >/dev/null 2>&1; then
   echo "cppcheck is required for static analysis."

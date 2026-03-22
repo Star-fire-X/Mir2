@@ -1,8 +1,9 @@
 #include <array>
-#include <concepts>
 #include <cstdint>
 #include <set>
 #include <sstream>
+#include <type_traits>
+#include <utility>
 
 #include "gtest/gtest.h"
 #include "shared/protocol/message_ids.h"
@@ -14,13 +15,22 @@ namespace {
 
 namespace shared_contract {
 
-template <typename T>
-concept HasControlledEntityId = requires(T value) {
-  { value.controlled_entity_id } -> std::same_as<shared::EntityId&>;
-};
+template <typename T, typename = void>
+struct HasControlledEntityId : std::false_type {};
 
 template <typename T>
-concept HasVisibleEntityKind = requires(T value) { value.kind; };
+struct HasControlledEntityId<
+    T, std::void_t<decltype(std::declval<T&>().controlled_entity_id)>>
+    : std::bool_constant<
+          std::is_same_v<decltype((std::declval<T&>().controlled_entity_id)),
+                         shared::EntityId&>> {};
+
+template <typename T, typename = void>
+struct HasVisibleEntityKind : std::false_type {};
+
+template <typename T>
+struct HasVisibleEntityKind<T, std::void_t<decltype(std::declval<T&>().kind)>>
+    : std::true_type {};
 
 }  // namespace shared_contract
 
@@ -59,13 +69,13 @@ TEST(SharedContractTest, MessageIdsAreUnique) {
 }
 
 TEST(SharedContractTest, EnterSceneSnapshotExposesControlledEntityId) {
-  EXPECT_TRUE(
-      (shared_contract::HasControlledEntityId<shared::EnterSceneSnapshot>));
+  EXPECT_TRUE((shared_contract::HasControlledEntityId<
+               shared::EnterSceneSnapshot>::value));
 }
 
 TEST(SharedContractTest, VisibleEntitySnapshotCarriesEntityType) {
-  EXPECT_TRUE(
-      (shared_contract::HasVisibleEntityKind<shared::VisibleEntitySnapshot>));
+  EXPECT_TRUE((shared_contract::HasVisibleEntityKind<
+               shared::VisibleEntitySnapshot>::value));
 }
 
 }  // namespace
