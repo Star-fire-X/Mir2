@@ -1,6 +1,7 @@
 #include "server/app/server_app.h"
 
 #include <string>
+#include <vector>
 
 namespace server {
 

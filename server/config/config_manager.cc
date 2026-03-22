@@ -1,6 +1,7 @@
 #include "server/config/config_manager.h"
 
 #include <string>
+#include <vector>
 
 namespace server {
 
