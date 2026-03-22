@@ -1,6 +1,7 @@
 #ifndef SERVER_APP_SERVER_APP_H_
 #define SERVER_APP_SERVER_APP_H_
 
+#include <string>
 #include <vector>
 
 #include "server/config/config_manager.h"

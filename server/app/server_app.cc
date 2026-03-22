@@ -1,5 +1,7 @@
 #include "server/app/server_app.h"
 
+#include <string>
+
 namespace server {
 
 bool ServerApp::Init(const GameConfig& config) {

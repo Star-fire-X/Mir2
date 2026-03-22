@@ -1,7 +1,7 @@
 #include "gtest/gtest.h"
 #include "server/app/server_app.h"
-#include "server/config/config_validator.h"
 #include "server/config/config_manager.h"
+#include "server/config/config_validator.h"
 
 namespace server {
 namespace {

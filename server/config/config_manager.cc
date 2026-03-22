@@ -1,5 +1,7 @@
 #include "server/config/config_manager.h"
 
+#include <string>
+
 namespace server {
 
 bool ConfigManager::Load(const GameConfig& config) {

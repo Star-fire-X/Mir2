@@ -1,8 +1,10 @@
+#include "server/config/config_validator.h"
+
+#include <algorithm>
 #include <string_view>
 #include <vector>
 
 #include "gtest/gtest.h"
-#include "server/config/config_validator.h"
 
 namespace server {
 namespace {
@@ -16,14 +18,12 @@ GameConfig BuildValidGameConfig() {
   return config;
 }
 
-bool ContainsMessage(const std::vector<std::string>& errors,
+bool ContainsMessage(const std::vector<std::string> &errors,
                      std::string_view needle) {
-  for (const std::string& error : errors) {
-    if (error.find(needle) != std::string::npos) {
-      return true;
-    }
-  }
-  return false;
+  return std::any_of(errors.begin(), errors.end(),
+                     [needle](const std::string &error) {
+                       return error.find(needle) != std::string::npos;
+                     });
 }
 
 TEST(ConfigValidatorTest, RejectsMissingMonsterTemplate) {

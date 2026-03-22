@@ -1,6 +1,7 @@
 #ifndef SERVER_CONFIG_CONFIG_MANAGER_H_
 #define SERVER_CONFIG_CONFIG_MANAGER_H_
 
+#include <string>
 #include <vector>
 
 #include "server/config/config_validator.h"
