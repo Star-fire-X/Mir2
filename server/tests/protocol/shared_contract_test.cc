@@ -5,7 +5,6 @@
 #include <sstream>
 
 #include "gtest/gtest.h"
-
 #include "shared/protocol/message_ids.h"
 #include "shared/protocol/scene_messages.h"
 #include "shared/types/entity_id.h"
@@ -21,9 +20,7 @@ concept HasControlledEntityId = requires(T value) {
 };
 
 template <typename T>
-concept HasVisibleEntityKind = requires(T value) {
-  value.kind;
-};
+concept HasVisibleEntityKind = requires(T value) { value.kind; };
 
 }  // namespace shared_contract
 
