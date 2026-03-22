@@ -37,11 +37,11 @@ ctest --test-dir "${BUILD_DIR}" --output-on-failure
 gcovr \
   --root "${ROOT_DIR}" \
   --object-directory "${BUILD_DIR}" \
-  --exclude ".*build-coverage.*" \
   --exclude ".*/third_party/.*" \
-  --exclude-directories ".*/CMakeFiles/.*" \
+  --gcov-exclude-directories ".*/CMakeFiles/3\\..*/CompilerId.*" \
   --exclude-directories ".*/_deps/.*" \
-  --gcov-ignore-errors=no_working_dir_found \
+  --filter "server/.*" \
+  --filter "client/.*" \
   --print-summary \
   --xml-pretty \
   --output "${REPORT_DIR}/coverage.xml" \
