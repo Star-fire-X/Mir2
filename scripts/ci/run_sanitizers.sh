@@ -29,6 +29,32 @@ find_test_probe_binary() {
     | sort | head -n 1
 }
 
+probe_logs_indicate_ptrace() {
+  shopt -s nullglob
+  local probe_logs=(
+    "${LOG_DIR}/probe.stderr"
+    "${LOG_DIR}"/probe-asan*
+    "${LOG_DIR}"/probe-ubsan*
+    "${LOG_DIR}"/probe-lsan*
+  )
+
+  local log_file
+  for log_file in "${probe_logs[@]}"; do
+    if [[ -f "${log_file}" ]] &&
+       grep -q 'LeakSanitizer does not work under ptrace' "${log_file}" 2>/dev/null; then
+      return 0
+    fi
+
+    if [[ -f "${log_file}" ]] &&
+       grep -q 'LeakSanitizer has encountered a fatal error' "${log_file}" 2>/dev/null &&
+       grep -qi 'ptrace' "${log_file}" 2>/dev/null; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
 probe_leak_detection_compatibility() {
   local probe_bin
   probe_bin="$(find_test_probe_binary)"
@@ -49,14 +75,7 @@ probe_leak_detection_compatibility() {
     return 0
   fi
 
-  if grep -q 'LeakSanitizer does not work under ptrace' "${probe_stderr}" 2>/dev/null; then
-    echo "::notice::Ptrace detected on test execution. Disabling LeakSanitizer defaults for this run."
-    rm -f "${probe_stdout}" "${probe_stderr}" "${LOG_DIR}"/probe-asan* "${LOG_DIR}"/probe-ubsan* "${LOG_DIR}"/probe-lsan*
-    return 1
-  fi
-
-  if grep -q 'LeakSanitizer has encountered a fatal error' "${probe_stderr}" 2>/dev/null &&
-     grep -qi 'ptrace' "${probe_stderr}" 2>/dev/null; then
+  if probe_logs_indicate_ptrace; then
     echo "::notice::Ptrace detected on test execution. Disabling LeakSanitizer defaults for this run."
     rm -f "${probe_stdout}" "${probe_stderr}" "${LOG_DIR}"/probe-asan* "${LOG_DIR}"/probe-ubsan* "${LOG_DIR}"/probe-lsan*
     return 1
@@ -92,7 +111,14 @@ detect_leaks_default=1
 
 print_sanitizer_logs() {
   shopt -s nullglob
-  local logs=("${LOG_DIR}"/asan* "${LOG_DIR}"/ubsan* "${LOG_DIR}"/lsan*)
+  local logs=(
+    "${LOG_DIR}"/asan*
+    "${LOG_DIR}"/ubsan*
+    "${LOG_DIR}"/lsan*
+    "${LOG_DIR}"/probe-asan*
+    "${LOG_DIR}"/probe-ubsan*
+    "${LOG_DIR}"/probe-lsan*
+  )
   printf '\n[Sanitizer log directory] %s\n' "${LOG_DIR}"
   if [[ "${#logs[@]}" -eq 0 ]]; then
     echo "No sanitizer log files were produced."
