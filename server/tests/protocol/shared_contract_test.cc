@@ -10,33 +10,32 @@
 #include "shared/protocol/scene_messages.h"
 #include "shared/types/entity_id.h"
 
+template <typename T, typename = void>
+struct SharedContractHasControlledEntityId : std::false_type {};
+
+template <typename T>
+using SharedContractControlledEntityIdMember =
+    decltype(std::declval<T*>()->controlled_entity_id);
+
+template <typename T>
+struct SharedContractHasControlledEntityId<
+    T, std::void_t<SharedContractControlledEntityIdMember<T>>>
+    : std::true_type {};
+
+template <typename T, typename = void>
+struct SharedContractHasVisibleEntityKind : std::false_type {};
+
+template <typename T>
+using SharedContractVisibleEntityKindMember =
+    decltype(std::declval<T*>()->kind);
+
+template <typename T>
+struct SharedContractHasVisibleEntityKind<
+    T, std::void_t<SharedContractVisibleEntityKindMember<T>>> : std::true_type {
+};
+
 namespace server {
 namespace {
-
-namespace shared_contract {
-
-template <typename T, typename = void>
-struct HasControlledEntityId : std::false_type {};
-
-template <typename T>
-using ControlledEntityIdMember =
-    decltype(std::declval<T&>().controlled_entity_id);
-
-template <typename T>
-struct HasControlledEntityId<T, std::void_t<ControlledEntityIdMember<T>>>
-    : std::true_type {};
-
-template <typename T, typename = void>
-struct HasVisibleEntityKind : std::false_type {};
-
-template <typename T>
-using VisibleEntityKindMember = decltype(std::declval<T&>().kind);
-
-template <typename T>
-struct HasVisibleEntityKind<T, std::void_t<VisibleEntityKindMember<T>>>
-    : std::true_type {};
-
-}  // namespace shared_contract
 
 TEST(SharedContractTest, EntityIdIsComparableAndPrintable) {
   const shared::EntityId low{1};
@@ -73,16 +72,16 @@ TEST(SharedContractTest, MessageIdsAreUnique) {
 }
 
 TEST(SharedContractTest, EnterSceneSnapshotExposesControlledEntityId) {
-  EXPECT_TRUE((shared_contract::HasControlledEntityId<
-               shared::EnterSceneSnapshot>::value));
+  EXPECT_TRUE(
+      (SharedContractHasControlledEntityId<shared::EnterSceneSnapshot>::value));
   EXPECT_TRUE(
       (std::is_same_v<
-          shared_contract::ControlledEntityIdMember<shared::EnterSceneSnapshot>,
+          SharedContractControlledEntityIdMember<shared::EnterSceneSnapshot>,
           shared::EntityId>));
 }
 
 TEST(SharedContractTest, VisibleEntitySnapshotCarriesEntityType) {
-  EXPECT_TRUE((shared_contract::HasVisibleEntityKind<
+  EXPECT_TRUE((SharedContractHasVisibleEntityKind<
                shared::VisibleEntitySnapshot>::value));
 }
 
