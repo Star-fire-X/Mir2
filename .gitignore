@@ -44,3 +44,6 @@ Thumbs.db
 # IDE files
 .idea/
 .vscode/
+
+# Git worktrees
+.worktrees/

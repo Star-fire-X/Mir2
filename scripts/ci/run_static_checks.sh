@@ -6,6 +6,9 @@ BUILD_DIR="${BUILD_DIR:-${ROOT_DIR}/build-static}"
 GENERATOR="${GENERATOR:-Ninja}"
 BUILD_TYPE="${BUILD_TYPE:-Debug}"
 
+# Support tools installed with: python3 -m pip install --user <tool>
+export PATH="$HOME/.local/bin:$PATH"
+
 if [[ ! -f "${ROOT_DIR}/CMakeLists.txt" ]]; then
   echo "::notice::CMakeLists.txt not found at repository root. Skipping static checks."
   exit 0
@@ -55,6 +58,8 @@ cppcheck \
   --std=c++20 \
   --enable=warning,style,performance,portability \
   --suppress=missingIncludeSystem \
+  -i "${BUILD_DIR}/_deps" \
+  -i "${BUILD_DIR}/CMakeFiles" \
   --inline-suppr
 
 if ! command -v clang-format >/dev/null 2>&1; then
@@ -71,5 +76,6 @@ fi
 
 cpplint \
   --quiet \
+  --repository="${ROOT_DIR}" \
   --filter=-legal/copyright \
   "${CPP_FILES[@]}"
