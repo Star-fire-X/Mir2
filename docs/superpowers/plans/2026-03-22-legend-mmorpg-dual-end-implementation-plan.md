@@ -129,7 +129,7 @@
 - Create: `client/app/client_main.cpp`
 - Test: `server/tests/bootstrap/server_bootstrap_test.cpp`
 
-- [ ] **Step 1: Create the top-level CMake layout**
+- [x] **Step 1: Create the top-level CMake layout**
 
 ```cmake
 cmake_minimum_required(VERSION 3.25)
@@ -140,7 +140,7 @@ add_subdirectory(server)
 add_subdirectory(client)
 ```
 
-- [ ] **Step 2: Write a failing bootstrap test**
+- [x] **Step 2: Write a failing bootstrap test**
 
 ```cpp
 TEST(ServerBootstrapTest, ConfigManagerStartsEmpty) {
@@ -149,13 +149,13 @@ TEST(ServerBootstrapTest, ConfigManagerStartsEmpty) {
 }
 ```
 
-- [ ] **Step 3: Run the bootstrap test and confirm it fails**
+- [x] **Step 3: Run the bootstrap test and confirm it fails**
 
 Run: `ctest --test-dir build --output-on-failure -R ServerBootstrapTest`
 
 Expected: compile or link failure because `ConfigManager` is not implemented yet
 
-- [ ] **Step 4: Add minimal bootstrap code**
+- [x] **Step 4: Add minimal bootstrap code**
 
 ```cpp
 int main() {
@@ -163,13 +163,13 @@ int main() {
 }
 ```
 
-- [ ] **Step 5: Re-run tests**
+- [x] **Step 5: Re-run tests**
 
 Run: `cmake -S . -B build && cmake --build build && ctest --test-dir build --output-on-failure -R ServerBootstrapTest`
 
 Expected: bootstrap test passes
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add CMakeLists.txt cmake server client
