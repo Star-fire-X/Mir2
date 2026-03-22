@@ -2,7 +2,7 @@
 
 #include "gtest/gtest.h"
 #include "server/config/config_validator.h"
-#include "server/core/log/trace_context.h"
+#include "server/core/log/logger.h"
 
 namespace server {
 namespace {
@@ -50,17 +50,20 @@ TEST(ConfigValidatorTest, RejectsInvalidSkillRange) {
   EXPECT_FALSE(ConfigValidator::Validate(config));
 }
 
-TEST(ConfigValidatorTest, TraceContextCarriesTraceAndEntityData) {
+TEST(ConfigValidatorTest, LoggerPropagatesTraceContextIntoLogRecord) {
+  Logger logger;
   TraceContext trace_context;
   trace_context.traceId = 7;
   trace_context.playerId = shared::PlayerId{11};
   trace_context.entityId = shared::EntityId{13};
   trace_context.clientSeq = 17;
 
-  EXPECT_EQ(trace_context.traceId, 7u);
-  EXPECT_EQ(trace_context.playerId, shared::PlayerId{11});
-  EXPECT_EQ(trace_context.entityId, shared::EntityId{13});
-  EXPECT_EQ(trace_context.clientSeq, 17u);
+  logger.SetTraceContext(trace_context);
+  logger.Log("player joined");
+
+  ASSERT_EQ(logger.records().size(), 1u);
+  EXPECT_EQ(logger.records()[0].trace_context, trace_context);
+  EXPECT_EQ(logger.records()[0].message, "player joined");
 }
 
 }  // namespace

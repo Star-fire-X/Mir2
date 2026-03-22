@@ -13,6 +13,7 @@ struct TraceContext {
   shared::PlayerId playerId {};
   shared::EntityId entityId {};
   std::uint32_t clientSeq {};
+  auto operator<=>(const TraceContext&) const = default;
 };
 
 }  // namespace server

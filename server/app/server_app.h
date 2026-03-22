@@ -7,15 +7,12 @@ namespace server {
 
 class ServerApp {
  public:
-  ServerApp();
-  explicit ServerApp(ConfigManager config_manager);
+  explicit ServerApp(const ConfigManager& config_manager);
 
   bool Init();
 
  private:
-  static ConfigManager BuildDefaultConfigManager();
-
-  ConfigManager config_manager_;
+  const ConfigManager& config_manager_;
 };
 
 }  // namespace server
