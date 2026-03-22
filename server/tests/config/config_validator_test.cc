@@ -2,7 +2,6 @@
 
 #include "gtest/gtest.h"
 #include "server/config/config_validator.h"
-#include "server/core/log/logger.h"
 
 namespace server {
 namespace {
@@ -50,20 +49,18 @@ TEST(ConfigValidatorTest, RejectsInvalidSkillRange) {
   EXPECT_FALSE(ConfigValidator::Validate(config));
 }
 
-TEST(ConfigValidatorTest, LoggerPropagatesTraceContextIntoLogRecord) {
-  Logger logger;
-  TraceContext trace_context;
-  trace_context.traceId = 7;
-  trace_context.playerId = shared::PlayerId{11};
-  trace_context.entityId = shared::EntityId{13};
-  trace_context.clientSeq = 17;
+TEST(ConfigValidatorTest, RejectsDuplicateItemIds) {
+  GameConfig config = MakeBaseConfig();
+  config.item_templates.push_back(ItemTemplate{.id = 1});
 
-  logger.SetTraceContext(trace_context);
-  logger.Log("player joined");
+  EXPECT_FALSE(ConfigValidator::Validate(config));
+}
 
-  ASSERT_EQ(logger.records().size(), 1u);
-  EXPECT_EQ(logger.records()[0].trace_context, trace_context);
-  EXPECT_EQ(logger.records()[0].message, "player joined");
+TEST(ConfigValidatorTest, RejectsZeroItemId) {
+  GameConfig config = MakeBaseConfig();
+  config.item_templates[0].id = 0;
+
+  EXPECT_FALSE(ConfigValidator::Validate(config));
 }
 
 }  // namespace

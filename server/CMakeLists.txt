@@ -22,6 +22,14 @@ if(BUILD_TESTING)
   set_project_warnings(config_validator_test)
 
   add_executable(
+    logger_test
+    tests/log/logger_test.cc)
+
+  target_include_directories(logger_test PRIVATE ${PROJECT_SOURCE_DIR})
+  target_link_libraries(logger_test PRIVATE GTest::gtest_main)
+  set_project_warnings(logger_test)
+
+  add_executable(
     server_bootstrap_test
     tests/bootstrap/server_bootstrap_test.cc
     app/server_app.cc)
@@ -42,6 +50,7 @@ if(BUILD_TESTING)
 
   include(GoogleTest)
   gtest_discover_tests(config_validator_test)
+  gtest_discover_tests(logger_test)
   gtest_discover_tests(server_bootstrap_test)
   gtest_discover_tests(shared_contract_test)
 endif()
