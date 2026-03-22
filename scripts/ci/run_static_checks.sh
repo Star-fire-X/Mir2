@@ -57,6 +57,7 @@ cppcheck \
   --error-exitcode=1 \
   --std=c++20 \
   --enable=warning,style,performance,portability \
+  --library=googletest \
   --suppress=missingIncludeSystem \
   -i "${BUILD_DIR}/_deps" \
   -i "${BUILD_DIR}/CMakeFiles" \
