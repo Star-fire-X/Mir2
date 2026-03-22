@@ -103,5 +103,19 @@ TEST(ConfigValidatorTest, RejectsZeroMonsterSpawnTemplateId) {
   EXPECT_FALSE(ConfigValidator::Validate(config));
 }
 
+TEST(ConfigValidatorTest, RejectsZeroMonsterTemplateDropItemId) {
+  GameConfig config = MakeBaseConfig();
+  config.monster_templates[0].drop_item_id = 0;
+
+  EXPECT_FALSE(ConfigValidator::Validate(config));
+}
+
+TEST(ConfigValidatorTest, RejectsZeroMonsterTemplateSkillId) {
+  GameConfig config = MakeBaseConfig();
+  config.monster_templates[0].skill_id = 0;
+
+  EXPECT_FALSE(ConfigValidator::Validate(config));
+}
+
 }  // namespace
 }  // namespace server
