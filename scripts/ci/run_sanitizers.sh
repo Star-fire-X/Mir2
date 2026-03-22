@@ -13,21 +13,66 @@ CMAKE_ARGS=()
 if [[ -n "${GOOGLETEST_SOURCE_DIR}" ]]; then
   CMAKE_ARGS+=("-DFETCHCONTENT_SOURCE_DIR_GOOGLETEST=${GOOGLETEST_SOURCE_DIR}")
 fi
-
-is_ptraced() {
-  if [[ ! -r /proc/self/status ]]; then
-    return 1
-  fi
-
-  local tracer_pid
-  tracer_pid="$(awk '/^TracerPid:/ {print $2}' /proc/self/status)"
-  [[ -n "${tracer_pid}" && "${tracer_pid}" != "0" ]]
-}
+CMAKE_ARGS+=("-DCMAKE_GTEST_DISCOVER_TESTS_DISCOVERY_MODE=PRE_TEST")
 
 normalize_log_dir() {
   if [[ "${LOG_DIR}" != /* ]]; then
     LOG_DIR="${PWD}/${LOG_DIR}"
   fi
+}
+
+find_test_probe_binary() {
+  find "${BUILD_DIR}" -type f -perm -111 \
+    -not -path '*/_deps/*' \
+    -not -path '*/CMakeFiles/*' \
+    \( -name '*test' -o -name '*_test' -o -name '*tests' -o -name '*_tests' \) \
+    | sort | head -n 1
+}
+
+probe_leak_detection_compatibility() {
+  local probe_bin
+  probe_bin="$(find_test_probe_binary)"
+  if [[ -z "${probe_bin}" ]]; then
+    echo "::notice::No test probe binary found. Keeping leak detection enabled."
+    return 0
+  fi
+
+  local probe_stdout="${LOG_DIR}/probe.stdout"
+  local probe_stderr="${LOG_DIR}/probe.stderr"
+  rm -f "${probe_stdout}" "${probe_stderr}" "${LOG_DIR}"/probe-asan* "${LOG_DIR}"/probe-ubsan* "${LOG_DIR}"/probe-lsan*
+
+  if ASAN_OPTIONS="detect_leaks=1:strict_string_checks=1:halt_on_error=1:log_path=${LOG_DIR}/probe-asan" \
+     UBSAN_OPTIONS="print_stacktrace=1:halt_on_error=1:log_path=${LOG_DIR}/probe-ubsan" \
+     LSAN_OPTIONS="exitcode=23:log_path=${LOG_DIR}/probe-lsan" \
+     "${probe_bin}" --gtest_list_tests >"${probe_stdout}" 2>"${probe_stderr}"; then
+    rm -f "${probe_stdout}" "${probe_stderr}" "${LOG_DIR}"/probe-asan* "${LOG_DIR}"/probe-ubsan* "${LOG_DIR}"/probe-lsan*
+    return 0
+  fi
+
+  if grep -q 'LeakSanitizer does not work under ptrace' "${probe_stderr}" 2>/dev/null; then
+    echo "::notice::Ptrace detected on test execution. Disabling LeakSanitizer defaults for this run."
+    rm -f "${probe_stdout}" "${probe_stderr}" "${LOG_DIR}"/probe-asan* "${LOG_DIR}"/probe-ubsan* "${LOG_DIR}"/probe-lsan*
+    return 1
+  fi
+
+  if grep -q 'LeakSanitizer has encountered a fatal error' "${probe_stderr}" 2>/dev/null &&
+     grep -qi 'ptrace' "${probe_stderr}" 2>/dev/null; then
+    echo "::notice::Ptrace detected on test execution. Disabling LeakSanitizer defaults for this run."
+    rm -f "${probe_stdout}" "${probe_stderr}" "${LOG_DIR}"/probe-asan* "${LOG_DIR}"/probe-ubsan* "${LOG_DIR}"/probe-lsan*
+    return 1
+  fi
+
+  echo "::error::Sanitizer compatibility probe failed unexpectedly."
+  if [[ -s "${probe_stdout}" ]]; then
+    printf '\n--- %s ---\n' "${probe_stdout}"
+    cat "${probe_stdout}"
+  fi
+  if [[ -s "${probe_stderr}" ]]; then
+    printf '\n--- %s ---\n' "${probe_stderr}"
+    cat "${probe_stderr}"
+  fi
+  print_sanitizer_logs
+  exit 1
 }
 
 if [[ ! -f "${ROOT_DIR}/CMakeLists.txt" ]]; then
@@ -44,14 +89,6 @@ if command -v llvm-symbolizer >/dev/null 2>&1; then
 fi
 
 detect_leaks_default=1
-if is_ptraced; then
-  echo "::notice::Ptrace detected. Disabling LeakSanitizer defaults for this run."
-  detect_leaks_default=0
-fi
-
-export ASAN_OPTIONS="${ASAN_OPTIONS:-detect_leaks=${detect_leaks_default}:strict_string_checks=1:halt_on_error=1:log_path=${LOG_DIR}/asan}"
-export UBSAN_OPTIONS="${UBSAN_OPTIONS:-print_stacktrace=1:halt_on_error=1:log_path=${LOG_DIR}/ubsan}"
-export LSAN_OPTIONS="${LSAN_OPTIONS:-exitcode=23:log_path=${LOG_DIR}/lsan}"
 
 print_sanitizer_logs() {
   shopt -s nullglob
@@ -85,6 +122,14 @@ if ! cmake --build "${BUILD_DIR}" --parallel; then
   print_sanitizer_logs
   exit 1
 fi
+
+if ! probe_leak_detection_compatibility; then
+  detect_leaks_default=0
+fi
+
+export ASAN_OPTIONS="${ASAN_OPTIONS:-detect_leaks=${detect_leaks_default}:strict_string_checks=1:halt_on_error=1:log_path=${LOG_DIR}/asan}"
+export UBSAN_OPTIONS="${UBSAN_OPTIONS:-print_stacktrace=1:halt_on_error=1:log_path=${LOG_DIR}/ubsan}"
+export LSAN_OPTIONS="${LSAN_OPTIONS:-exitcode=23:log_path=${LOG_DIR}/lsan}"
 
 if ! ctest --test-dir "${BUILD_DIR}" --output-on-failure; then
   print_sanitizer_logs
