@@ -63,5 +63,45 @@ TEST(ConfigValidatorTest, RejectsZeroItemId) {
   EXPECT_FALSE(ConfigValidator::Validate(config));
 }
 
+TEST(ConfigValidatorTest, RejectsDuplicateSkillTemplateIds) {
+  GameConfig config = MakeBaseConfig();
+  config.skill_templates.push_back(SkillTemplate{.id = 1, .range = 4});
+
+  EXPECT_FALSE(ConfigValidator::Validate(config));
+}
+
+TEST(ConfigValidatorTest, RejectsZeroSkillId) {
+  GameConfig config = MakeBaseConfig();
+  config.skill_templates[0].id = 0;
+
+  EXPECT_FALSE(ConfigValidator::Validate(config));
+}
+
+TEST(ConfigValidatorTest, RejectsDuplicateMonsterTemplateIds) {
+  GameConfig config = MakeBaseConfig();
+  config.monster_templates.push_back(MonsterTemplate{
+      .id = 1,
+      .drop_item_id = 1,
+      .move_speed = 12,
+      .skill_id = 1,
+  });
+
+  EXPECT_FALSE(ConfigValidator::Validate(config));
+}
+
+TEST(ConfigValidatorTest, RejectsZeroMonsterTemplateId) {
+  GameConfig config = MakeBaseConfig();
+  config.monster_templates[0].id = 0;
+
+  EXPECT_FALSE(ConfigValidator::Validate(config));
+}
+
+TEST(ConfigValidatorTest, RejectsZeroMonsterSpawnTemplateId) {
+  GameConfig config = MakeBaseConfig();
+  config.monster_spawns[0].monster_template_id = 0;
+
+  EXPECT_FALSE(ConfigValidator::Validate(config));
+}
+
 }  // namespace
 }  // namespace server

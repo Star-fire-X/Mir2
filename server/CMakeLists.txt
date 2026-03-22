@@ -10,6 +10,8 @@ target_link_libraries(server_app PRIVATE server_config)
 set_project_warnings(server_app)
 
 if(BUILD_TESTING)
+  add_test(NAME ServerAppSmokeCheck COMMAND $<TARGET_FILE:server_app>)
+
   add_executable(
     config_validator_test
     tests/config/config_validator_test.cc)
