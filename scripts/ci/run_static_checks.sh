@@ -24,6 +24,7 @@ mapfile -t CPP_FILES < <(
   find "${ROOT_DIR}" -type f \
     \( -name "*.h" -o -name "*.hpp" -o -name "*.hh" -o -name "*.cc" -o -name "*.cpp" -o -name "*.cxx" \) \
     -not -path "*/.git/*" \
+    -not -path "*/.worktrees/*" \
     -not -path "*/build/*" \
     -not -path "*/build-*/*" \
     -not -path "*/third_party/*" | sort

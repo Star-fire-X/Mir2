@@ -22,3 +22,5 @@ if grep -q 'clang-tidy' "${STATIC_CHECKS}"; then
   echo "run_static_checks.sh still invokes clang-tidy"
   exit 1
 fi
+
+grep -Fq -- '-not -path "*/.worktrees/*"' "${STATIC_CHECKS}"
