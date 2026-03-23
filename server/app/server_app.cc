@@ -1,24 +1,17 @@
 #include "server/app/server_app.h"
 
-#include <string>
-#include <vector>
+#include "server/config/config_validator.h"
 
 namespace server {
 
-bool ServerApp::Init(const GameConfig& config) {
-  if (!config_manager_.Load(config)) {
-    is_initialized_ = false;
+ServerApp::ServerApp(const ConfigManager& config_manager)
+    : config_manager_(config_manager) {}
+
+bool ServerApp::Init() {
+  if (!config_manager_.IsLoaded()) {
     return false;
   }
-
-  is_initialized_ = true;
-  return true;
-}
-
-bool ServerApp::IsInitialized() const { return is_initialized_; }
-
-const std::vector<std::string>& ServerApp::ValidationErrors() const {
-  return config_manager_.ValidationErrors();
+  return ConfigValidator::Validate(config_manager_.GetConfig());
 }
 
 }  // namespace server

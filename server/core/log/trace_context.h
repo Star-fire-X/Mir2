@@ -9,10 +9,11 @@
 namespace server {
 
 struct TraceContext {
-  std::uint64_t trace_id = 0;
-  shared::PlayerId player_id{};
-  shared::EntityId entity_id{};
-  std::uint32_t client_seq = 0;
+  std::uint64_t traceId{};
+  shared::PlayerId playerId{};
+  shared::EntityId entityId{};
+  std::uint32_t clientSeq{};
+  auto operator<=>(const TraceContext&) const = default;
 };
 
 }  // namespace server

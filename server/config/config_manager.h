@@ -1,26 +1,22 @@
 #ifndef SERVER_CONFIG_CONFIG_MANAGER_H_
 #define SERVER_CONFIG_CONFIG_MANAGER_H_
 
-#include <string>
-#include <vector>
-
-#include "server/config/config_validator.h"
+#include "server/config/config_model.h"
 
 namespace server {
 
 class ConfigManager {
  public:
   ConfigManager() = default;
+  explicit ConfigManager(GameConfig config);
 
-  bool Load(const GameConfig& config);
   bool IsLoaded() const;
   const GameConfig& GetConfig() const;
-  const std::vector<std::string>& ValidationErrors() const;
+  void Load(GameConfig config);
 
  private:
-  GameConfig config_;
-  std::vector<std::string> validation_errors_;
   bool is_loaded_ = false;
+  GameConfig config_{};
 };
 
 }  // namespace server
