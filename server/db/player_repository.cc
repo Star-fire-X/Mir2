@@ -7,8 +7,9 @@ bool PlayerRepository::Save(const PlayerSaveSnapshot& snapshot) {
   return true;
 }
 
-const std::optional<PlayerSaveSnapshot>& PlayerRepository::last_saved_snapshot()
-    const {
+using Snapshot = std::optional<PlayerSaveSnapshot>;
+
+const Snapshot& PlayerRepository::last_saved_snapshot() const {
   return last_saved_snapshot_;
 }
 
