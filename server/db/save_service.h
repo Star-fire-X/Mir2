@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <optional>
 
-#include "server/data/character_data.h"
+#include "server/db/player_save_snapshot.h"
 
 namespace server {
 

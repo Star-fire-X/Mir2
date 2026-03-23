@@ -6,7 +6,6 @@
 #include <vector>
 
 #include "server/data/inventory.h"
-#include "shared/protocol/scene_messages.h"
 #include "shared/types/player_id.h"
 
 namespace server {
@@ -24,9 +23,14 @@ struct BaseAttributes {
   std::uint32_t intelligence {};
 };
 
+struct WorldPosition {
+  float x = 0.0F;
+  float y = 0.0F;
+};
+
 struct LastSceneSnapshot {
   std::uint32_t scene_id {};
-  shared::ScenePosition position {};
+  WorldPosition position {};
 };
 
 struct CharacterData {
@@ -35,11 +39,6 @@ struct CharacterData {
   Inventory inventory {};
   std::vector<std::uint32_t> learned_skill_ids;
   LastSceneSnapshot last_scene_snapshot {};
-  std::uint64_t version {};
-};
-
-struct PlayerSaveSnapshot {
-  CharacterData data;
   std::uint64_t version {};
 };
 

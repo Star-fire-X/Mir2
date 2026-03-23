@@ -4,9 +4,11 @@ namespace server {
 
 PlayerSaveSnapshot SaveService::QueueSnapshotFromMainThread(
     const CharacterData& data) {
+  const std::uint64_t version = next_version_;
+  ++next_version_;
   queued_snapshot_ = PlayerSaveSnapshot{
       .data = data,
-      .version = next_version_,
+      .snapshot_version = version,
   };
   dirty_ = true;
   retry_ = false;
@@ -20,18 +22,19 @@ const PlayerSaveSnapshot& SaveService::queued_snapshot() const {
 }
 
 void SaveService::NotifySaveSuccess(std::uint64_t version) {
-  if (!queued_snapshot_.has_value() || queued_snapshot_->version != version) {
+  if (!queued_snapshot_.has_value() ||
+      queued_snapshot_->snapshot_version != version) {
     return;
   }
 
   queued_snapshot_.reset();
   dirty_ = false;
   retry_ = false;
-  next_version_ = version + 1;
 }
 
 void SaveService::NotifySaveFailure(std::uint64_t version) {
-  if (!queued_snapshot_.has_value() || queued_snapshot_->version != version) {
+  if (!queued_snapshot_.has_value() ||
+      queued_snapshot_->snapshot_version != version) {
     return;
   }
 
