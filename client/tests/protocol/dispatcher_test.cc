@@ -1,6 +1,7 @@
 #include <string>
 #include <vector>
 
+#include "client/app/game_app.h"
 #include "client/net/network_manager.h"
 #include "client/protocol/protocol_dispatcher.h"
 #include "gtest/gtest.h"
@@ -54,6 +55,48 @@ TEST(ClientDispatcherTest, DispatchesQueuedMessagesInArrivalOrder) {
                 "aoi_leave",
                 "inventory_delta",
             }));
+}
+
+TEST(ClientDispatcherTest, RunFramePumpsQueuedNetworkMessagesInArrivalOrder) {
+  GameApp app;
+  std::vector<std::string> dispatch_order;
+
+  app.protocol_dispatcher().SetEnterSceneSnapshotHandler(
+      [&dispatch_order](const protocol::EnterSceneSnapshotMessage&) {
+        dispatch_order.push_back("enter_scene_snapshot");
+      });
+  app.protocol_dispatcher().SetSelfStateHandler(
+      [&dispatch_order](const protocol::SelfStateMessage&) {
+        dispatch_order.push_back("self_state");
+      });
+  app.protocol_dispatcher().SetAoiEnterHandler(
+      [&dispatch_order](const protocol::AoiEnterMessage&) {
+        dispatch_order.push_back("aoi_enter");
+      });
+  app.protocol_dispatcher().SetInventoryDeltaHandler(
+      [&dispatch_order](const protocol::InventoryDeltaMessage&) {
+        dispatch_order.push_back("inventory_delta");
+      });
+
+  app.network_manager().Enqueue(
+      protocol::ClientMessage{protocol::EnterSceneSnapshotMessage{}});
+  app.network_manager().Enqueue(
+      protocol::ClientMessage{protocol::SelfStateMessage{}});
+  app.network_manager().Enqueue(
+      protocol::ClientMessage{protocol::AoiEnterMessage{}});
+  app.network_manager().Enqueue(
+      protocol::ClientMessage{protocol::InventoryDeltaMessage{}});
+
+  app.RunFrame();
+
+  EXPECT_EQ(dispatch_order,
+            (std::vector<std::string>{
+                "enter_scene_snapshot",
+                "self_state",
+                "aoi_enter",
+                "inventory_delta",
+            }));
+  EXPECT_TRUE(app.network_manager().Drain().empty());
 }
 
 }  // namespace

@@ -4,6 +4,12 @@
 #include <utility>
 
 namespace client {
+namespace {
+
+template <typename>
+inline constexpr bool kUnhandledClientMessage = false;
+
+}  // namespace
 
 void ProtocolDispatcher::SetEnterSceneSnapshotHandler(
     EnterSceneSnapshotHandler handler) {
@@ -54,6 +60,10 @@ void ProtocolDispatcher::Dispatch(
           if (inventory_delta_handler_) {
             inventory_delta_handler_(payload);
           }
+        } else {
+          static_assert(
+              kUnhandledClientMessage<Payload>,
+              "ProtocolDispatcher::Dispatch is missing a ClientMessage handler");
         }
       },
       message);
