@@ -240,9 +240,9 @@ git commit -m "feat: add shared protocol and id contracts"
 - Create: `server/core/log/trace_context.h`
 - Create: `server/config/config_manager.h`
 - Create: `server/config/config_validator.h`
-- Create: `server/tests/config/config_validator_test.cpp`
+- Create: `server/tests/config/config_validator_test.cc`
 
-- [ ] **Step 1: Write failing config validation tests**
+- [x] **Step 1: Write failing config validation tests**
 
 Cover:
 - missing monster template
@@ -250,13 +250,13 @@ Cover:
 - negative move speed
 - invalid skill range
 
-- [ ] **Step 2: Run config tests**
+- [x] **Step 2: Run config tests**
 
 Run: `ctest --test-dir build --output-on-failure -R ConfigValidatorTest`
 
 Expected: FAIL because validator is not implemented
 
-- [ ] **Step 3: Implement trace context propagation**
+- [x] **Step 3: Implement trace context propagation**
 
 ```cpp
 struct TraceContext {
@@ -267,7 +267,7 @@ struct TraceContext {
 };
 ```
 
-- [ ] **Step 4: Implement config loading and validation**
+- [x] **Step 4: Implement config loading and validation**
 
 Minimum validation:
 - referential integrity
@@ -275,17 +275,17 @@ Minimum validation:
 - duplicate ids
 - required fields
 
-- [ ] **Step 5: Add startup-fast-fail path**
+- [x] **Step 5: Add startup-fast-fail path**
 
 `ServerApp::Init()` must return false when config validation fails
 
-- [ ] **Step 6: Re-run tests**
+- [x] **Step 6: Re-run tests**
 
 Run: `cmake --build build && ctest --test-dir build --output-on-failure -R "ConfigValidatorTest|ServerBootstrapTest"`
 
 Expected: PASS
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add server/core server/config server/tests/config
