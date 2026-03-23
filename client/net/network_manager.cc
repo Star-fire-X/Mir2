@@ -1,6 +1,7 @@
 #include "client/net/network_manager.h"
 
 #include <utility>
+#include <vector>
 
 namespace client {
 
