@@ -1,5 +1,6 @@
-#include "gtest/gtest.h"
 #include "server/core/log/logger.h"
+
+#include "gtest/gtest.h"
 
 namespace server {
 namespace {

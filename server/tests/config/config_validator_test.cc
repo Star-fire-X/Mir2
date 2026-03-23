@@ -1,7 +1,8 @@
+#include "server/config/config_validator.h"
+
 #include <cstdint>
 
 #include "gtest/gtest.h"
-#include "server/config/config_validator.h"
 
 namespace server {
 namespace {

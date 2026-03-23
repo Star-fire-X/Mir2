@@ -1,7 +1,8 @@
+#include "server/db/save_service.h"
+
 #include <cstdint>
 
 #include "gtest/gtest.h"
-#include "server/db/save_service.h"
 
 namespace server {
 namespace {

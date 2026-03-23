@@ -29,11 +29,9 @@ struct InventoryDeltaMessage {
   shared::InventoryDelta delta;
 };
 
-using ClientMessage = std::variant<EnterSceneSnapshotMessage,
-                                   SelfStateMessage,
-                                   AoiEnterMessage,
-                                   AoiLeaveMessage,
-                                   InventoryDeltaMessage>;
+using ClientMessage =
+    std::variant<EnterSceneSnapshotMessage, SelfStateMessage, AoiEnterMessage,
+                 AoiLeaveMessage, InventoryDeltaMessage>;
 
 }  // namespace protocol
 }  // namespace client

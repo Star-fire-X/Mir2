@@ -1,5 +1,6 @@
 #include "server/config/config_validator.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <unordered_set>
 
@@ -8,12 +9,12 @@ namespace {
 
 template <typename TEntry, typename TCollection>
 bool HasUniqueNonZeroIds(const TCollection& collection,
-                         std::unordered_set<std::uint32_t>& ids) {
+                         std::unordered_set<std::uint32_t>* ids) {
   for (const auto& entry : collection) {
     if (entry.id == 0) {
       return false;
     }
-    if (!ids.insert(entry.id).second) {
+    if (!ids->insert(entry.id).second) {
       return false;
     }
   }
@@ -27,7 +28,7 @@ bool ConfigValidator::Validate(const GameConfig& config) {
   std::unordered_set<std::uint32_t> skill_ids;
   std::unordered_set<std::uint32_t> monster_template_ids;
 
-  if (!HasUniqueNonZeroIds<ItemTemplate>(config.item_templates, item_ids)) {
+  if (!HasUniqueNonZeroIds<ItemTemplate>(config.item_templates, &item_ids)) {
     return false;
   }
 
@@ -54,14 +55,12 @@ bool ConfigValidator::Validate(const GameConfig& config) {
     }
   }
 
-  for (const auto& monster_spawn : config.monster_spawns) {
-    if (monster_spawn.monster_template_id == 0 ||
-        !monster_template_ids.contains(monster_spawn.monster_template_id)) {
-      return false;
-    }
-  }
-
-  return true;
+  return std::all_of(
+      config.monster_spawns.begin(), config.monster_spawns.end(),
+      [&monster_template_ids](const MonsterSpawn& monster_spawn) {
+        return monster_spawn.monster_template_id != 0 &&
+               monster_template_ids.contains(monster_spawn.monster_template_id);
+      });
 }
 
 }  // namespace server

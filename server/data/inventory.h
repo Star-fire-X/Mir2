@@ -9,8 +9,8 @@
 namespace server {
 
 struct InventorySlot {
-  std::uint32_t item_template_id {};
-  std::uint32_t item_count {};
+  std::uint32_t item_template_id{};
+  std::uint32_t item_count{};
 };
 
 class Inventory {
@@ -18,8 +18,7 @@ class Inventory {
   explicit Inventory(std::size_t slot_count = 20);
 
   bool AddStackableItem(std::uint32_t item_template_id,
-                        std::uint32_t item_count,
-                        std::uint32_t max_stack_size);
+                        std::uint32_t item_count, std::uint32_t max_stack_size);
   bool RemoveItemFromSlot(std::size_t slot_index);
 
   const std::vector<std::optional<InventorySlot>>& slots() const;

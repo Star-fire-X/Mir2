@@ -15,7 +15,9 @@ PlayerSaveSnapshot SaveService::QueueSnapshotFromMainThread(
   return *queued_snapshot_;
 }
 
-bool SaveService::HasQueuedSnapshot() const { return queued_snapshot_.has_value(); }
+bool SaveService::HasQueuedSnapshot() const {
+  return queued_snapshot_.has_value();
+}
 
 const PlayerSaveSnapshot& SaveService::queued_snapshot() const {
   return *queued_snapshot_;

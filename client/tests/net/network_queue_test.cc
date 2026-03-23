@@ -1,4 +1,4 @@
-#include <thread>
+#include <thread>  // NOLINT(build/c++11)
 #include <variant>
 #include <vector>
 
@@ -15,7 +15,8 @@ TEST(NetworkQueueTest, EnqueuesMessagesFromNetworkThreadInOrder) {
   std::thread network_thread([&network_manager]() {
     network_manager.Enqueue(
         protocol::ClientMessage{protocol::EnterSceneSnapshotMessage{}});
-    network_manager.Enqueue(protocol::ClientMessage{protocol::SelfStateMessage{}});
+    network_manager.Enqueue(
+        protocol::ClientMessage{protocol::SelfStateMessage{}});
   });
   network_thread.join();
 

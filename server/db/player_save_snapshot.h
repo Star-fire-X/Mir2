@@ -9,7 +9,7 @@ namespace server {
 
 struct PlayerSaveSnapshot {
   CharacterData data;
-  std::uint64_t snapshot_version {};
+  std::uint64_t snapshot_version{};
 };
 
 }  // namespace server

@@ -11,16 +11,16 @@
 namespace server {
 
 struct CharacterIdentity {
-  shared::PlayerId player_id {};
+  shared::PlayerId player_id{};
   std::string character_name;
 };
 
 struct BaseAttributes {
-  std::uint32_t level {};
-  std::uint32_t strength {};
-  std::uint32_t agility {};
-  std::uint32_t vitality {};
-  std::uint32_t intelligence {};
+  std::uint32_t level{};
+  std::uint32_t strength{};
+  std::uint32_t agility{};
+  std::uint32_t vitality{};
+  std::uint32_t intelligence{};
 };
 
 struct WorldPosition {
@@ -29,17 +29,17 @@ struct WorldPosition {
 };
 
 struct LastSceneSnapshot {
-  std::uint32_t scene_id {};
-  WorldPosition position {};
+  std::uint32_t scene_id{};
+  WorldPosition position{};
 };
 
 struct CharacterData {
-  CharacterIdentity identity {};
-  BaseAttributes base_attributes {};
-  Inventory inventory {};
+  CharacterIdentity identity{};
+  BaseAttributes base_attributes{};
+  Inventory inventory{};
   std::vector<std::uint32_t> learned_skill_ids;
-  LastSceneSnapshot last_scene_snapshot {};
-  std::uint64_t version {};
+  LastSceneSnapshot last_scene_snapshot{};
+  std::uint64_t version{};
 };
 
 }  // namespace server

@@ -10,15 +10,14 @@
 namespace server {
 
 struct LogRecord {
-  TraceContext trace_context {};
+  TraceContext trace_context{};
   std::string message;
 };
 
 class Logger {
  public:
   Logger() = default;
-  explicit Logger(TraceContext trace_context)
-      : trace_context_(trace_context) {}
+  explicit Logger(TraceContext trace_context) : trace_context_(trace_context) {}
 
   void SetTraceContext(TraceContext trace_context) {
     trace_context_ = trace_context;

@@ -1,6 +1,7 @@
 #include "server/data/inventory.h"
 
 #include <algorithm>
+#include <utility>
 
 namespace server {
 
@@ -17,8 +18,7 @@ bool Inventory::AddStackableItem(std::uint32_t item_template_id,
   std::uint32_t remaining = item_count;
 
   for (auto& slot : updated_slots) {
-    if (!slot.has_value() ||
-        slot->item_template_id != item_template_id ||
+    if (!slot.has_value() || slot->item_template_id != item_template_id ||
         slot->item_count >= max_stack_size) {
       continue;
     }

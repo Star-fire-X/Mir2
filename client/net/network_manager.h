@@ -1,7 +1,7 @@
 #ifndef CLIENT_NET_NETWORK_MANAGER_H_
 #define CLIENT_NET_NETWORK_MANAGER_H_
 
-#include <mutex>
+#include <mutex>  // NOLINT(build/c++11)
 #include <vector>
 
 #include "client/protocol/client_message.h"

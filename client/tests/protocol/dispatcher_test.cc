@@ -13,7 +13,8 @@ TEST(ClientDispatcherTest, DispatchesQueuedMessagesInArrivalOrder) {
   NetworkManager network_manager;
   network_manager.Enqueue(
       protocol::ClientMessage{protocol::EnterSceneSnapshotMessage{}});
-  network_manager.Enqueue(protocol::ClientMessage{protocol::SelfStateMessage{}});
+  network_manager.Enqueue(
+      protocol::ClientMessage{protocol::SelfStateMessage{}});
   network_manager.Enqueue(protocol::ClientMessage{protocol::AoiEnterMessage{}});
   network_manager.Enqueue(protocol::ClientMessage{protocol::AoiLeaveMessage{}});
   network_manager.Enqueue(
@@ -47,14 +48,13 @@ TEST(ClientDispatcherTest, DispatchesQueuedMessagesInArrivalOrder) {
     dispatcher.Dispatch(message);
   }
 
-  EXPECT_EQ(dispatch_order,
-            (std::vector<std::string>{
-                "enter_scene_snapshot",
-                "self_state",
-                "aoi_enter",
-                "aoi_leave",
-                "inventory_delta",
-            }));
+  EXPECT_EQ(dispatch_order, (std::vector<std::string>{
+                                "enter_scene_snapshot",
+                                "self_state",
+                                "aoi_enter",
+                                "aoi_leave",
+                                "inventory_delta",
+                            }));
 }
 
 TEST(ClientDispatcherTest, RunFramePumpsQueuedNetworkMessagesInArrivalOrder) {
@@ -89,13 +89,12 @@ TEST(ClientDispatcherTest, RunFramePumpsQueuedNetworkMessagesInArrivalOrder) {
 
   app.RunFrame();
 
-  EXPECT_EQ(dispatch_order,
-            (std::vector<std::string>{
-                "enter_scene_snapshot",
-                "self_state",
-                "aoi_enter",
-                "inventory_delta",
-            }));
+  EXPECT_EQ(dispatch_order, (std::vector<std::string>{
+                                "enter_scene_snapshot",
+                                "self_state",
+                                "aoi_enter",
+                                "inventory_delta",
+                            }));
   EXPECT_TRUE(app.network_manager().Drain().empty());
 }
 

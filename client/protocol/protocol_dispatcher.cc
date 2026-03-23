@@ -43,27 +43,36 @@ void ProtocolDispatcher::Dispatch(
           if (enter_scene_snapshot_handler_) {
             enter_scene_snapshot_handler_(payload);
           }
-        } else if constexpr (std::is_same_v<Payload, protocol::SelfStateMessage>) {
-          if (self_state_handler_) {
-            self_state_handler_(payload);
-          }
-        } else if constexpr (std::is_same_v<Payload, protocol::AoiEnterMessage>) {
-          if (aoi_enter_handler_) {
-            aoi_enter_handler_(payload);
-          }
-        } else if constexpr (std::is_same_v<Payload, protocol::AoiLeaveMessage>) {
-          if (aoi_leave_handler_) {
-            aoi_leave_handler_(payload);
-          }
-        } else if constexpr (std::is_same_v<Payload,
-                                             protocol::InventoryDeltaMessage>) {
-          if (inventory_delta_handler_) {
-            inventory_delta_handler_(payload);
-          }
         } else {
-          static_assert(
-              kUnhandledClientMessage<Payload>,
-              "ProtocolDispatcher::Dispatch is missing a ClientMessage handler");
+          if constexpr (std::is_same_v<Payload, protocol::SelfStateMessage>) {
+            if (self_state_handler_) {
+              self_state_handler_(payload);
+            }
+          } else {
+            if constexpr (std::is_same_v<Payload, protocol::AoiEnterMessage>) {
+              if (aoi_enter_handler_) {
+                aoi_enter_handler_(payload);
+              }
+            } else {
+              if constexpr (std::is_same_v<Payload,
+                                           protocol::AoiLeaveMessage>) {
+                if (aoi_leave_handler_) {
+                  aoi_leave_handler_(payload);
+                }
+              } else {
+                if constexpr (std::is_same_v<Payload,
+                                             protocol::InventoryDeltaMessage>) {
+                  if (inventory_delta_handler_) {
+                    inventory_delta_handler_(payload);
+                  }
+                } else {
+                  static_assert(kUnhandledClientMessage<Payload>,
+                                "ProtocolDispatcher::Dispatch is missing a "
+                                "ClientMessage handler");
+                }
+              }
+            }
+          }
         }
       },
       message);

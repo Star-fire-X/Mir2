@@ -13,7 +13,8 @@ server::GameConfig BuildMinimalValidConfig() {
       .move_speed = 1,
       .skill_id = 1,
   });
-  config.monster_spawns.push_back(server::MonsterSpawn{.monster_template_id = 1});
+  config.monster_spawns.push_back(
+      server::MonsterSpawn{.monster_template_id = 1});
   return config;
 }
 

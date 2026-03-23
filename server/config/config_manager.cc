@@ -4,9 +4,7 @@
 
 namespace server {
 
-ConfigManager::ConfigManager(GameConfig config) {
-  Load(std::move(config));
-}
+ConfigManager::ConfigManager(GameConfig config) { Load(std::move(config)); }
 
 bool ConfigManager::IsLoaded() const { return is_loaded_; }
 

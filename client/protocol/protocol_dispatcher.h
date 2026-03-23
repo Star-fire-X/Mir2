@@ -13,10 +13,8 @@ class ProtocolDispatcher {
       std::function<void(const protocol::EnterSceneSnapshotMessage&)>;
   using SelfStateHandler =
       std::function<void(const protocol::SelfStateMessage&)>;
-  using AoiEnterHandler =
-      std::function<void(const protocol::AoiEnterMessage&)>;
-  using AoiLeaveHandler =
-      std::function<void(const protocol::AoiLeaveMessage&)>;
+  using AoiEnterHandler = std::function<void(const protocol::AoiEnterMessage&)>;
+  using AoiLeaveHandler = std::function<void(const protocol::AoiLeaveMessage&)>;
   using InventoryDeltaHandler =
       std::function<void(const protocol::InventoryDeltaMessage&)>;
 
