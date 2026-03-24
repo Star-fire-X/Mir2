@@ -1,5 +1,7 @@
 #include "server/scene/scene.h"
 
+#include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <functional>
 #include <iterator>
@@ -10,6 +12,16 @@
 #include "server/scene/movement_system.h"
 
 namespace server {
+namespace {
+
+float DistanceBetween(const shared::ScenePosition& lhs,
+                      const shared::ScenePosition& rhs) {
+  const float dx = rhs.x - lhs.x;
+  const float dy = rhs.y - lhs.y;
+  return std::sqrt((dx * dx) + (dy * dy));
+}
+
+}  // namespace
 
 Scene::Scene() = default;
 
@@ -35,6 +47,8 @@ void Scene::Tick(const MovementSystem* movement_system, float delta_seconds) {
     return;
   }
 
+  float remaining_move_budget = movement_system->max_speed_units_per_second() *
+                                std::max(delta_seconds, 0.0F);
   while (HasPendingCommands()) {
     const std::optional<SceneCommand> command = Dequeue();
     if (!command.has_value()) {
@@ -45,10 +59,30 @@ void Scene::Tick(const MovementSystem* movement_system, float delta_seconds) {
       continue;
     }
 
+    const std::optional<shared::ScenePosition> current_position =
+        GetPosition(command->move_request.entity_id);
+    const float requested_distance =
+        current_position.has_value()
+            ? DistanceBetween(*current_position,
+                              command->move_request.target_position)
+            : 0.0F;
+    if (current_position.has_value() &&
+        requested_distance >
+            remaining_move_budget + movement_system->correction_threshold()) {
+      recent_move_corrections_.push_back(shared::MoveCorrection{
+          command->move_request.entity_id,
+          *current_position,
+          command->move_request.client_seq,
+      });
+      continue;
+    }
+
     std::optional<shared::MoveCorrection> correction;
     const bool accepted = movement_system->ApplyMove(
         this, command->move_request, delta_seconds, &correction);
-    if (!accepted && correction.has_value()) {
+    if (accepted && current_position.has_value()) {
+      remaining_move_budget -= requested_distance;
+    } else if (!accepted && correction.has_value()) {
       recent_move_corrections_.push_back(*correction);
     }
   }

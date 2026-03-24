@@ -12,6 +12,8 @@
 
 namespace server {
 
+enum class SaveTrigger : std::uint8_t;
+class SaveService;
 class Session;
 
 class ProtocolDispatcher {
@@ -27,11 +29,18 @@ class ProtocolDispatcher {
 
   bool HandleMoveRequest(const Session* session,
                          const shared::MoveRequest& move_request);
+  bool HandleLogout(Session* session, SaveService* save_service);
+  bool HandleDisconnect(Session* session, SaveService* save_service);
+  std::optional<shared::EnterSceneSnapshot> HandleReconnect(
+      Session* session, shared::PlayerId player_id);
 
  private:
   CharacterData BuildDefaultCharacter(
       shared::PlayerId player_id,
       const shared::LoginRequest& login_request) const;
+  bool TearDownSession(Session* session, SaveService* save_service,
+                       SaveTrigger save_trigger);
+  void DestroyControlledEntity(Player* player);
 
   PlayerManager* player_manager_ = nullptr;
   SceneManager* scene_manager_ = nullptr;

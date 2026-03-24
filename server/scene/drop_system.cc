@@ -92,6 +92,10 @@ shared::PickupResult DropSystem::HandlePickup(
     result.error_code = shared::ErrorCode::kDropNotFound;
     return result;
   }
+  if (!scene->Find(pickup_request.drop_entity_id).has_value()) {
+    result.error_code = shared::ErrorCode::kDropNotFound;
+    return result;
+  }
 
   const DropEntry& drop = drop_it->second;
   const bool added = player->mutable_data().inventory.AddStackableItem(

@@ -55,5 +55,36 @@ TEST(PickupIdempotencyTest, DuplicatePickupRequestDoesNotDuplicateItems) {
   EXPECT_EQ(player.data().inventory.slots()[0]->item_count, 1U);
 }
 
+TEST(PickupIdempotencyTest, PickupRejectsDropMissingFromProvidedScene) {
+  Scene origin_scene;
+  Scene unrelated_scene;
+  DropSystem drop_system;
+  Player player(MakePlayerData(shared::PlayerId{78}));
+
+  const std::vector<DropItemSpec> drops = {
+      DropItemSpec{5001, 1},
+  };
+  const std::vector<shared::EntityId> drop_entity_ids = drop_system.SpawnDrops(
+      &origin_scene, shared::ScenePosition{1.0F, 2.0F}, drops);
+  ASSERT_EQ(drop_entity_ids.size(), 1U);
+
+  const shared::PickupRequest pickup_request{
+      player.data().identity.player_id,
+      drop_entity_ids[0],
+      43,
+  };
+  const shared::PickupResult wrong_scene_result =
+      drop_system.HandlePickup(&unrelated_scene, &player, pickup_request, 20);
+  EXPECT_EQ(wrong_scene_result.error_code, shared::ErrorCode::kDropNotFound);
+  EXPECT_FALSE(player.data().inventory.slots()[0].has_value());
+
+  const shared::PickupResult correct_scene_result =
+      drop_system.HandlePickup(&origin_scene, &player, pickup_request, 20);
+  EXPECT_EQ(correct_scene_result.error_code, shared::ErrorCode::kOk);
+  ASSERT_TRUE(player.data().inventory.slots()[0].has_value());
+  EXPECT_EQ(player.data().inventory.slots()[0]->item_template_id, 5001U);
+  EXPECT_EQ(origin_scene.EntityCount(), 0U);
+}
+
 }  // namespace
 }  // namespace server
