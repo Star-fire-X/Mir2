@@ -8,6 +8,7 @@ set_project_warnings(server_data)
 add_library(server_scene STATIC
   scene/scene.cc
   scene/movement_system.cc
+  scene/drop_system.cc
   entity/entity_factory.cc
   aoi/aoi_system.cc)
 
@@ -23,6 +24,10 @@ endif()
 set_project_warnings(server_scene)
 
 add_library(server_runtime STATIC
+  skill/skill_system.cc
+  battle/battle_system.cc
+  buff/buff_system.cc
+  ai/ai_system.cc
   net/session.cc
   player/player.cc
   protocol/protocol_dispatcher.cc)
@@ -179,6 +184,58 @@ if(BUILD_TESTING)
             GTest::gtest_main)
   set_project_warnings(move_correction_test)
 
+  add_executable(
+    skill_cast_test
+    tests/battle/skill_cast_test.cc)
+  target_include_directories(skill_cast_test PRIVATE ${PROJECT_SOURCE_DIR})
+  target_link_libraries(
+    skill_cast_test
+    PRIVATE server_runtime
+            GTest::gtest_main)
+  set_project_warnings(skill_cast_test)
+
+  add_executable(
+    damage_resolution_test
+    tests/battle/damage_resolution_test.cc)
+  target_include_directories(
+    damage_resolution_test PRIVATE ${PROJECT_SOURCE_DIR})
+  target_link_libraries(
+    damage_resolution_test
+    PRIVATE server_runtime
+            GTest::gtest_main)
+  set_project_warnings(damage_resolution_test)
+
+  add_executable(
+    buff_expire_test
+    tests/buff/buff_expire_test.cc)
+  target_include_directories(buff_expire_test PRIVATE ${PROJECT_SOURCE_DIR})
+  target_link_libraries(
+    buff_expire_test
+    PRIVATE server_runtime
+            GTest::gtest_main)
+  set_project_warnings(buff_expire_test)
+
+  add_executable(
+    monster_ai_test
+    tests/ai/monster_ai_test.cc)
+  target_include_directories(monster_ai_test PRIVATE ${PROJECT_SOURCE_DIR})
+  target_link_libraries(
+    monster_ai_test
+    PRIVATE server_runtime
+            GTest::gtest_main)
+  set_project_warnings(monster_ai_test)
+
+  add_executable(
+    pickup_idempotency_test
+    tests/drop/pickup_idempotency_test.cc)
+  target_include_directories(
+    pickup_idempotency_test PRIVATE ${PROJECT_SOURCE_DIR})
+  target_link_libraries(
+    pickup_idempotency_test
+    PRIVATE server_runtime
+            GTest::gtest_main)
+  set_project_warnings(pickup_idempotency_test)
+
   include(GoogleTest)
   gtest_discover_tests(inventory_test)
   gtest_discover_tests(player_repository_test)
@@ -193,4 +250,9 @@ if(BUILD_TESTING)
   gtest_discover_tests(enter_scene_snapshot_test)
   gtest_discover_tests(movement_system_test)
   gtest_discover_tests(move_correction_test)
+  gtest_discover_tests(skill_cast_test)
+  gtest_discover_tests(damage_resolution_test)
+  gtest_discover_tests(buff_expire_test)
+  gtest_discover_tests(monster_ai_test)
+  gtest_discover_tests(pickup_idempotency_test)
 endif()
