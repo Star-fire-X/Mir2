@@ -1,8 +1,7 @@
-#include "server/db/save_service.h"
-
 #include <algorithm>
 
 #include "gtest/gtest.h"
+#include "server/db/save_service.h"
 #include "server/ecs/components.h"
 #include "server/entity/entity_factory.h"
 #include "server/net/session.h"
@@ -41,8 +40,8 @@ TEST(ReconnectSnapshotTest, ReconnectReturnsFreshFullSceneSnapshot) {
   ASSERT_NE(scene, nullptr);
   EntityFactory entity_factory(scene);
   constexpr shared::EntityId kMonsterId{900001};
-  entity_factory.SpawnMonster(2001, kMonsterId, shared::ScenePosition{7.0F,
-                                                                      4.0F});
+  entity_factory.SpawnMonster(2001, kMonsterId,
+                              shared::ScenePosition{7.0F, 4.0F});
 
   const std::optional<entt::entity> controlled_entity =
       scene->Find(first_snapshot->controlled_entity_id);
@@ -52,7 +51,7 @@ TEST(ReconnectSnapshotTest, ReconnectReturnsFreshFullSceneSnapshot) {
       4.0F,
   };
 
-  Player* player = player_manager.Find(login.player_id);
+  const Player* player = player_manager.Find(login.player_id);
   ASSERT_NE(player, nullptr);
 
   EXPECT_TRUE(dispatcher.HandleDisconnect(&first_session, &save_service));

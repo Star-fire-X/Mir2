@@ -118,8 +118,8 @@ TEST(SaveServiceTest, TimerAndLifecycleTriggersQueueWithExpectedSemantics) {
   EXPECT_FALSE(save_service.ShouldQueueSnapshot(SaveTrigger::kTimer, false));
   EXPECT_TRUE(save_service.ShouldQueueSnapshot(SaveTrigger::kTimer, true));
   EXPECT_TRUE(save_service.ShouldQueueSnapshot(SaveTrigger::kLogout, false));
-  EXPECT_TRUE(save_service.ShouldQueueSnapshot(SaveTrigger::kDisconnect,
-                                               false));
+  EXPECT_TRUE(
+      save_service.ShouldQueueSnapshot(SaveTrigger::kDisconnect, false));
 }
 
 }  // namespace

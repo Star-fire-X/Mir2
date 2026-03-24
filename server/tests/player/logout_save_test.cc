@@ -1,6 +1,5 @@
-#include "server/db/save_service.h"
-
 #include "gtest/gtest.h"
+#include "server/db/save_service.h"
 #include "server/ecs/components.h"
 #include "server/net/session.h"
 #include "server/player/player_manager.h"
@@ -43,8 +42,8 @@ TEST(LogoutSaveTest, LogoutQueuesSaveSnapshotFromLiveSceneState) {
       save_service.queued_snapshot().data.last_scene_snapshot.position.x, 8.0F);
   EXPECT_FLOAT_EQ(
       save_service.queued_snapshot().data.last_scene_snapshot.position.y, 6.0F);
-  EXPECT_FALSE(scene->Find(enter_scene_snapshot->controlled_entity_id)
-                   .has_value());
+  EXPECT_FALSE(
+      scene->Find(enter_scene_snapshot->controlled_entity_id).has_value());
 
   const Player* player = player_manager.Find(login.player_id);
   ASSERT_NE(player, nullptr);

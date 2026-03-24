@@ -129,9 +129,8 @@ std::optional<shared::EnterSceneSnapshot> ProtocolDispatcher::HandleReconnect(
   player->BindSession(session);
   player->ResumeOperations();
   return HandleEnterScene(
-      session,
-      shared::EnterSceneRequest{player_id, player->data().last_scene_snapshot
-                                               .scene_id});
+      session, shared::EnterSceneRequest{
+                   player_id, player->data().last_scene_snapshot.scene_id});
 }
 
 CharacterData ProtocolDispatcher::BuildDefaultCharacter(
@@ -163,7 +162,7 @@ bool ProtocolDispatcher::TearDownSession(Session* session,
     return false;
   }
 
-  Scene* scene = scene_manager_->Find(player->current_scene_id());
+  const Scene* scene = scene_manager_->Find(player->current_scene_id());
   player->CaptureSceneSnapshot(scene);
   if (save_service != nullptr) {
     if (save_service->ShouldMarkDirty(save_trigger)) {
