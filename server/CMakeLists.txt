@@ -5,6 +5,21 @@ add_library(server_data STATIC
 target_include_directories(server_data PUBLIC ${PROJECT_SOURCE_DIR})
 set_project_warnings(server_data)
 
+add_library(server_scene STATIC
+  scene/scene.cc
+  entity/entity_factory.cc)
+
+target_include_directories(server_scene PUBLIC ${PROJECT_SOURCE_DIR})
+target_link_libraries(server_scene PUBLIC EnTT::EnTT server_data)
+get_target_property(
+  ENTT_INCLUDE_DIRS
+  EnTT::EnTT
+  INTERFACE_INCLUDE_DIRECTORIES)
+if(ENTT_INCLUDE_DIRS)
+  target_include_directories(server_scene SYSTEM PUBLIC ${ENTT_INCLUDE_DIRS})
+endif()
+set_project_warnings(server_scene)
+
 add_library(server_db STATIC
   db/player_repository.cc
   db/save_service.cc)
@@ -92,6 +107,16 @@ if(BUILD_TESTING)
   target_link_libraries(shared_contract_test PRIVATE GTest::gtest_main)
   set_project_warnings(shared_contract_test)
 
+  add_executable(
+    scene_spawn_test
+    tests/scene/scene_spawn_test.cc)
+  target_include_directories(scene_spawn_test PRIVATE ${PROJECT_SOURCE_DIR})
+  target_link_libraries(
+    scene_spawn_test
+    PRIVATE server_scene
+            GTest::gtest_main)
+  set_project_warnings(scene_spawn_test)
+
   include(GoogleTest)
   gtest_discover_tests(inventory_test)
   gtest_discover_tests(player_repository_test)
@@ -100,4 +125,5 @@ if(BUILD_TESTING)
   gtest_discover_tests(logger_test)
   gtest_discover_tests(server_bootstrap_test)
   gtest_discover_tests(shared_contract_test)
+  gtest_discover_tests(scene_spawn_test)
 endif()

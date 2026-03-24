@@ -1,5 +1,10 @@
 include(FetchContent)
 
+FetchContent_Declare(
+  entt
+  URL https://github.com/skypjack/entt/archive/refs/tags/v3.13.2.zip)
+FetchContent_MakeAvailable(entt)
+
 if(BUILD_TESTING)
   FetchContent_Declare(
     googletest
