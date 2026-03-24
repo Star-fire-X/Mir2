@@ -82,5 +82,39 @@ TEST(ReconnectSnapshotTest, ReconnectReturnsFreshFullSceneSnapshot) {
   EXPECT_FLOAT_EQ(self_position->y, 4.0F);
 }
 
+TEST(ReconnectSnapshotTest, ReconnectSupersedesPreviousSessionRequests) {
+  PlayerManager player_manager;
+  SceneManager scene_manager;
+  SaveService save_service;
+  ProtocolDispatcher dispatcher(&player_manager, &scene_manager);
+  Session first_session(1);
+
+  const shared::LoginResponse login = dispatcher.HandleLogin(
+      &first_session, shared::LoginRequest{"hero_account", "password"});
+  const std::optional<shared::EnterSceneSnapshot> first_snapshot =
+      dispatcher.HandleEnterScene(
+          &first_session, shared::EnterSceneRequest{login.player_id, 1});
+  ASSERT_TRUE(first_snapshot.has_value());
+
+  Session second_session(2);
+  const std::optional<shared::EnterSceneSnapshot> reconnect_snapshot =
+      dispatcher.HandleReconnect(&second_session, login.player_id);
+  ASSERT_TRUE(reconnect_snapshot.has_value());
+
+  const shared::MoveRequest stale_move_request{
+      reconnect_snapshot->controlled_entity_id,
+      shared::ScenePosition{3.0F, 0.0F},
+      7,
+      700,
+  };
+  EXPECT_FALSE(
+      dispatcher.HandleMoveRequest(&first_session, stale_move_request));
+  EXPECT_FALSE(dispatcher.HandleDisconnect(&first_session, &save_service));
+
+  const Player* player = player_manager.Find(login.player_id);
+  ASSERT_NE(player, nullptr);
+  EXPECT_EQ(player->session(), &second_session);
+}
+
 }  // namespace
 }  // namespace server

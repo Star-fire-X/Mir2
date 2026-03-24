@@ -18,6 +18,14 @@ void MovementSystem::AddBlockedRect(BlockedRect blocked_rect) {
   blocked_rects_.push_back(blocked_rect);
 }
 
+float MovementSystem::max_speed_units_per_second() const {
+  return max_speed_units_per_second_;
+}
+
+float MovementSystem::correction_threshold() const {
+  return correction_threshold_;
+}
+
 bool MovementSystem::ApplyMove(
     Scene* scene, const shared::MoveRequest& move_request, float delta_seconds,
     std::optional<shared::MoveCorrection>* correction) const {

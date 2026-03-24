@@ -8,6 +8,14 @@
 #include "server/player/player.h"
 
 namespace server {
+namespace {
+
+bool IsBoundToSession(const Player* player, const Session* session) {
+  return player != nullptr && session != nullptr &&
+         player->session() == session;
+}
+
+}  // namespace
 
 ProtocolDispatcher::ProtocolDispatcher(PlayerManager* player_manager,
                                        SceneManager* scene_manager)
@@ -46,7 +54,7 @@ std::optional<shared::EnterSceneSnapshot> ProtocolDispatcher::HandleEnterScene(
   }
 
   Player* player = player_manager_->Find(enter_scene_request.player_id);
-  if (player == nullptr) {
+  if (!IsBoundToSession(player, session)) {
     return std::nullopt;
   }
 
@@ -75,7 +83,8 @@ bool ProtocolDispatcher::HandleMoveRequest(
   }
 
   Player* player = player_manager_->Find(*session->player_id());
-  if (player == nullptr || !player->controlled_entity_id().has_value()) {
+  if (!IsBoundToSession(player, session) ||
+      !player->controlled_entity_id().has_value()) {
     return false;
   }
   if (player->operations_frozen()) {
@@ -126,6 +135,10 @@ std::optional<shared::EnterSceneSnapshot> ProtocolDispatcher::HandleReconnect(
     session->SelectCharacter();
   }
 
+  Session* previous_session = player->session();
+  if (previous_session != nullptr && previous_session != session) {
+    previous_session->Disconnect();
+  }
   player->BindSession(session);
   player->ResumeOperations();
   return HandleEnterScene(
@@ -158,7 +171,7 @@ bool ProtocolDispatcher::TearDownSession(Session* session,
   }
 
   Player* player = player_manager_->Find(*session->player_id());
-  if (player == nullptr) {
+  if (!IsBoundToSession(player, session)) {
     return false;
   }
 
