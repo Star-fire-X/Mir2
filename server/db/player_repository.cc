@@ -3,6 +3,11 @@
 namespace server {
 
 bool PlayerRepository::Save(const PlayerSaveSnapshot& snapshot) {
+  if (last_saved_snapshot_.has_value() &&
+      snapshot.snapshot_version < last_saved_snapshot_->snapshot_version) {
+    return false;
+  }
+
   last_saved_snapshot_ = snapshot;
   return true;
 }

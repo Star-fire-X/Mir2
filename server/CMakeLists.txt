@@ -36,6 +36,17 @@ if(BUILD_TESTING)
   set_project_warnings(inventory_test)
 
   add_executable(
+    player_repository_test
+    tests/data/player_repository_test.cc)
+
+  target_include_directories(player_repository_test PRIVATE ${PROJECT_SOURCE_DIR})
+  target_link_libraries(
+    player_repository_test
+    PRIVATE server_db
+            GTest::gtest_main)
+  set_project_warnings(player_repository_test)
+
+  add_executable(
     save_service_test
     tests/data/save_service_test.cc)
 
@@ -83,6 +94,7 @@ if(BUILD_TESTING)
 
   include(GoogleTest)
   gtest_discover_tests(inventory_test)
+  gtest_discover_tests(player_repository_test)
   gtest_discover_tests(save_service_test)
   gtest_discover_tests(config_validator_test)
   gtest_discover_tests(logger_test)
