@@ -20,11 +20,13 @@ if [[ ! -f "${ROOT_DIR}/CMakeLists.txt" ]]; then
   exit 0
 fi
 
+# Exclude nested worktrees under this checkout without dropping a
+# checkout whose own root path happens to live under `/.worktrees/`.
 mapfile -t CPP_FILES < <(
   find "${ROOT_DIR}" -type f \
     \( -name "*.h" -o -name "*.hpp" -o -name "*.hh" -o -name "*.cc" -o -name "*.cpp" -o -name "*.cxx" \) \
     -not -path "*/.git/*" \
-    -not -path "*/.worktrees/*" \
+    -not -path "${ROOT_DIR}/.worktrees/*" \
     -not -path "*/build/*" \
     -not -path "*/build-*/*" \
     -not -path "*/third_party/*" | sort

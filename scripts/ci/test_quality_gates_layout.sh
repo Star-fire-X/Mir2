@@ -23,4 +23,50 @@ if grep -q 'clang-tidy' "${STATIC_CHECKS}"; then
   exit 1
 fi
 
-grep -Fq -- '-not -path "*/.worktrees/*"' "${STATIC_CHECKS}"
+grep -Fq -- '-not -path "${ROOT_DIR}/.worktrees/*"' "${STATIC_CHECKS}"
+
+TMP_DIR="$(mktemp -d)"
+trap 'rm -rf "${TMP_DIR}"' EXIT
+
+TEST_REPO="${TMP_DIR}/repo/.worktrees/active"
+TOOL_BIN="${TMP_DIR}/bin"
+TOOL_LOG_DIR="${TMP_DIR}/tool-logs"
+mkdir -p "${TEST_REPO}/scripts/ci" \
+  "${TEST_REPO}/src" \
+  "${TEST_REPO}/.worktrees/other/src" \
+  "${TOOL_BIN}" \
+  "${TOOL_LOG_DIR}"
+
+cp "${STATIC_CHECKS}" "${TEST_REPO}/scripts/ci/run_static_checks.sh"
+chmod +x "${TEST_REPO}/scripts/ci/run_static_checks.sh"
+
+printf 'cmake_minimum_required(VERSION 3.20)\nproject(static_checks_fixture LANGUAGES CXX)\n' \
+  > "${TEST_REPO}/CMakeLists.txt"
+printf 'int kept = 0;\n' > "${TEST_REPO}/src/kept.cc"
+printf 'int ignored = 0;\n' > "${TEST_REPO}/.worktrees/other/src/ignored.cc"
+
+for tool in cmake cppcheck clang-format cpplint; do
+  cat <<'EOF' > "${TOOL_BIN}/${tool}"
+#!/usr/bin/env bash
+set -euo pipefail
+log_name="$(basename "$0")"
+printf '%s\n' "$*" >> "${TOOL_LOG_DIR}/${log_name}.log"
+EOF
+  chmod +x "${TOOL_BIN}/${tool}"
+done
+
+PATH="${TOOL_BIN}:$PATH" TOOL_LOG_DIR="${TOOL_LOG_DIR}" \
+  bash "${TEST_REPO}/scripts/ci/run_static_checks.sh"
+
+if [[ ! -f "${TOOL_LOG_DIR}/clang-format.log" ]]; then
+  echo "clang-format was not invoked for a checkout rooted under .worktrees"
+  exit 1
+fi
+
+grep -Fq "${TEST_REPO}/src/kept.cc" "${TOOL_LOG_DIR}/clang-format.log"
+
+if grep -Fq "${TEST_REPO}/.worktrees/other/src/ignored.cc" \
+  "${TOOL_LOG_DIR}/clang-format.log"; then
+  echo "nested worktree sources should be excluded from static checks"
+  exit 1
+fi
