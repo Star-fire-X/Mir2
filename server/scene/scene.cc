@@ -121,8 +121,9 @@ std::optional<shared::VisibleEntitySnapshot> Scene::BuildVisibleSnapshot(
   };
 }
 
-const std::vector<shared::MoveCorrection>& Scene::recent_move_corrections()
-    const {
+using MoveCorrectionList = std::vector<shared::MoveCorrection>;
+
+const MoveCorrectionList& Scene::recent_move_corrections() const {
   return recent_move_corrections_;
 }
 

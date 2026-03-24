@@ -9,9 +9,10 @@
 namespace server {
 
 MovementSystem::MovementSystem(float max_speed_units_per_second,
-                               float correction_threshold)
-    : max_speed_units_per_second_(max_speed_units_per_second),
-      correction_threshold_(correction_threshold) {}
+                               float correction_threshold) {
+  max_speed_units_per_second_ = max_speed_units_per_second;
+  correction_threshold_ = correction_threshold;
+}
 
 void MovementSystem::AddBlockedRect(BlockedRect blocked_rect) {
   blocked_rects_.push_back(blocked_rect);
