@@ -52,16 +52,16 @@
 ### Server bootstrap
 
 **Files**
-- Create: `server/app/server_main.cpp`
+- Create: `server/app/server_main.cc`
 - Create: `server/app/server_app.h`
-- Create: `server/app/server_app.cpp`
+- Create: `server/app/server_app.cc`
 - Create: `server/core/log/logger.h`
-- Create: `server/core/log/logger.cpp`
+- Create: `server/core/log/logger.cc`
 - Create: `server/core/time/game_clock.h`
 - Create: `server/core/id/id_generator.h`
 - Create: `server/config/config_manager.h`
-- Create: `server/config/config_manager.cpp`
-- Create: `server/tests/bootstrap/server_bootstrap_test.cpp`
+- Create: `server/config/config_manager.cc`
+- Create: `server/tests/bootstrap/server_bootstrap_test.cc`
 
 ### Server runtime
 
@@ -88,18 +88,18 @@
 **Files**
 - Create: `server/data/character_data.h`
 - Create: `server/data/inventory.h`
-- Create: `server/data/skill_book.h`
+- Note: learned skills are stored in `server/data/character_data.h` as `CharacterData::learned_skill_ids`; no separate `server/data/skill_book.h` file is planned
 - Create: `server/db/player_repository.h`
 - Create: `server/db/save_service.h`
-- Create: `server/db/save_service.cpp`
-- Create: `server/tests/data/inventory_test.cpp`
-- Create: `server/tests/data/save_service_test.cpp`
+- Create: `server/db/save_service.cc`
+- Create: `server/tests/data/inventory_test.cc`
+- Create: `server/tests/data/save_service_test.cc`
 
 ### Client bootstrap and runtime
 
 **Files**
 - Create: `client/app/game_app.h`
-- Create: `client/app/game_app.cpp`
+- Create: `client/app/game_app.cc`
 - Create: `client/net/network_manager.h`
 - Create: `client/protocol/protocol_dispatcher.h`
 - Create: `client/model/model_root.h`
@@ -115,7 +115,7 @@
 - Create: `client/controller/skill_controller.h`
 - Create: `client/ui/ui_manager.h`
 - Create: `client/debug/dev_panel.h`
-- Create: `client/tests/model/inventory_model_test.cpp`
+- Create: `client/tests/model/inventory_model_test.cc`
 
 ## 2. Implementation Order
 
@@ -125,9 +125,9 @@
 - Create: `CMakeLists.txt`
 - Create: `cmake/Warnings.cmake`
 - Create: `cmake/Dependencies.cmake`
-- Create: `server/app/server_main.cpp`
-- Create: `client/app/client_main.cpp`
-- Test: `server/tests/bootstrap/server_bootstrap_test.cpp`
+- Create: `server/app/server_main.cc`
+- Create: `client/app/client_main.cc`
+- Test: `server/tests/bootstrap/server_bootstrap_test.cc`
 
 - [x] **Step 1: Create the top-level CMake layout**
 
@@ -186,7 +186,7 @@ git commit -m "chore: bootstrap dual-end project skeleton"
 - Create: `shared/protocol/auth_messages.h`
 - Create: `shared/protocol/scene_messages.h`
 - Create: `shared/protocol/combat_messages.h`
-- Test: `server/tests/protocol/shared_contract_test.cpp`
+- Test: `server/tests/protocol/shared_contract_test.cc`
 
 - [x] **Step 1: Write failing contract tests**
 
@@ -297,15 +297,15 @@ git commit -m "feat: add logging trace context and config validation"
 **Files:**
 - Create: `server/data/character_data.h`
 - Create: `server/data/inventory.h`
-- Create: `server/data/skill_book.h`
+- Note: learned skills are stored in `CharacterData::learned_skill_ids`; Task 4 does not produce a separate `server/data/skill_book.h` artifact
 - Create: `server/db/player_repository.h`
-- Create: `server/db/player_repository.cpp`
+- Create: `server/db/player_repository.cc`
 - Create: `server/db/save_service.h`
-- Create: `server/db/save_service.cpp`
-- Test: `server/tests/data/inventory_test.cpp`
-- Test: `server/tests/data/save_service_test.cpp`
+- Create: `server/db/save_service.cc`
+- Test: `server/tests/data/inventory_test.cc`
+- Test: `server/tests/data/save_service_test.cc`
 
-- [ ] **Step 1: Write failing inventory tests**
+- [x] **Step 1: Write failing inventory tests**
 
 Cover:
 - add stackable item
@@ -313,20 +313,20 @@ Cover:
 - merge into existing stack
 - remove item from slot
 
-- [ ] **Step 2: Write failing save service tests**
+- [x] **Step 2: Write failing save service tests**
 
 Cover:
 - snapshot queued from main thread
 - success callback clears dirty flag
 - failure callback keeps retry flag
 
-- [ ] **Step 3: Run data tests**
+- [x] **Step 3: Run data tests**
 
 Run: `ctest --test-dir build --output-on-failure -R "InventoryTest|SaveServiceTest"`
 
 Expected: FAIL because data and repository code are absent
 
-- [ ] **Step 4: Implement `CharacterData` as long-lived state**
+- [x] **Step 4: Implement `CharacterData` as long-lived state**
 
 Must include:
 - identity
@@ -336,7 +336,7 @@ Must include:
 - last scene/position snapshot
 - version
 
-- [ ] **Step 5: Implement `SaveService` with snapshot versioning**
+- [x] **Step 5: Implement `SaveService` with snapshot versioning**
 
 ```cpp
 struct PlayerSaveSnapshot {
@@ -345,13 +345,13 @@ struct PlayerSaveSnapshot {
 };
 ```
 
-- [ ] **Step 6: Re-run data tests**
+- [x] **Step 6: Re-run data tests**
 
 Run: `cmake --build build && ctest --test-dir build --output-on-failure -R "InventoryTest|SaveServiceTest"`
 
 Expected: PASS
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add server/data server/db server/tests/data
@@ -363,12 +363,12 @@ git commit -m "feat: add persistence layer and character data model"
 **Files:**
 - Create: `server/net/network_server.h`
 - Create: `server/net/session.h`
-- Create: `server/net/session.cpp`
+- Create: `server/net/session.cc`
 - Create: `server/protocol/protocol_dispatcher.h`
-- Create: `server/protocol/protocol_dispatcher.cpp`
+- Create: `server/protocol/protocol_dispatcher.cc`
 - Create: `server/player/player.h`
 - Create: `server/player/player_manager.h`
-- Test: `server/tests/player/player_login_flow_test.cpp`
+- Test: `server/tests/player/player_login_flow_test.cc`
 
 - [ ] **Step 1: Write failing login flow test**
 
@@ -424,13 +424,13 @@ git commit -m "feat: add server network session and player lifecycle"
 
 **Files:**
 - Create: `server/scene/scene.h`
-- Create: `server/scene/scene.cpp`
+- Create: `server/scene/scene.cc`
 - Create: `server/scene/scene_manager.h`
 - Create: `server/ecs/components.h`
 - Create: `server/ecs/system_context.h`
 - Create: `server/entity/entity_factory.h`
-- Create: `server/entity/entity_factory.cpp`
-- Test: `server/tests/scene/scene_spawn_test.cpp`
+- Create: `server/entity/entity_factory.cc`
+- Test: `server/tests/scene/scene_spawn_test.cc`
 
 - [ ] **Step 1: Write failing scene spawn tests**
 
@@ -485,11 +485,11 @@ git commit -m "feat: add scene skeleton and ecs entity factory"
 
 **Files:**
 - Create: `server/aoi/aoi_system.h`
-- Create: `server/aoi/aoi_system.cpp`
-- Modify: `server/scene/scene.cpp`
-- Modify: `server/protocol/protocol_dispatcher.cpp`
-- Test: `server/tests/aoi/aoi_enter_leave_test.cpp`
-- Test: `server/tests/scene/enter_scene_snapshot_test.cpp`
+- Create: `server/aoi/aoi_system.cc`
+- Modify: `server/scene/scene.cc`
+- Modify: `server/protocol/protocol_dispatcher.cc`
+- Test: `server/tests/aoi/aoi_enter_leave_test.cc`
+- Test: `server/tests/scene/enter_scene_snapshot_test.cc`
 
 - [ ] **Step 1: Write failing AOI tests**
 
@@ -535,10 +535,10 @@ git commit -m "feat: add enter scene snapshot and aoi baseline"
 
 **Files:**
 - Create: `server/scene/movement_system.h`
-- Create: `server/scene/movement_system.cpp`
-- Modify: `server/scene/scene.cpp`
-- Test: `server/tests/scene/movement_system_test.cpp`
-- Test: `server/tests/scene/move_correction_test.cpp`
+- Create: `server/scene/movement_system.cc`
+- Modify: `server/scene/scene.cc`
+- Test: `server/tests/scene/movement_system_test.cc`
+- Test: `server/tests/scene/move_correction_test.cc`
 
 - [ ] **Step 1: Write failing movement tests**
 
@@ -589,14 +589,14 @@ git commit -m "feat: add movement tick and correction flow"
 
 **Files:**
 - Create: `server/skill/skill_system.h`
-- Create: `server/skill/skill_system.cpp`
+- Create: `server/skill/skill_system.cc`
 - Create: `server/battle/battle_system.h`
-- Create: `server/battle/battle_system.cpp`
+- Create: `server/battle/battle_system.cc`
 - Create: `server/buff/buff_system.h`
-- Create: `server/buff/buff_system.cpp`
-- Test: `server/tests/battle/skill_cast_test.cpp`
-- Test: `server/tests/battle/damage_resolution_test.cpp`
-- Test: `server/tests/buff/buff_expire_test.cpp`
+- Create: `server/buff/buff_system.cc`
+- Test: `server/tests/battle/skill_cast_test.cc`
+- Test: `server/tests/battle/damage_resolution_test.cc`
+- Test: `server/tests/buff/buff_expire_test.cc`
 
 - [ ] **Step 1: Write failing combat tests**
 
@@ -655,11 +655,11 @@ git commit -m "feat: add combat skill and buff runtime"
 
 **Files:**
 - Create: `server/ai/ai_system.h`
-- Create: `server/ai/ai_system.cpp`
+- Create: `server/ai/ai_system.cc`
 - Create: `server/scene/drop_system.h`
-- Create: `server/scene/drop_system.cpp`
-- Test: `server/tests/ai/monster_ai_test.cpp`
-- Test: `server/tests/drop/pickup_idempotency_test.cpp`
+- Create: `server/scene/drop_system.cc`
+- Test: `server/tests/ai/monster_ai_test.cc`
+- Test: `server/tests/drop/pickup_idempotency_test.cc`
 
 - [ ] **Step 1: Write failing AI and pickup tests**
 
@@ -715,11 +715,11 @@ git commit -m "feat: add monster ai and drop pickup flow"
 ### Task 11: Save Triggers, Logout, Disconnect, Reconnect Rebuild
 
 **Files:**
-- Modify: `server/player/player.cpp`
-- Modify: `server/db/save_service.cpp`
-- Modify: `server/protocol/protocol_dispatcher.cpp`
-- Test: `server/tests/player/logout_save_test.cpp`
-- Test: `server/tests/player/reconnect_snapshot_test.cpp`
+- Modify: `server/player/player.cc`
+- Modify: `server/db/save_service.cc`
+- Modify: `server/protocol/protocol_dispatcher.cc`
+- Test: `server/tests/player/logout_save_test.cc`
+- Test: `server/tests/player/reconnect_snapshot_test.cc`
 
 - [ ] **Step 1: Write failing save/reconnect tests**
 
@@ -767,27 +767,27 @@ git commit -m "feat: add save triggers logout and reconnect rebuild"
 
 **Files:**
 - Create: `client/app/game_app.h`
-- Create: `client/app/game_app.cpp`
+- Create: `client/app/game_app.cc`
 - Create: `client/net/network_manager.h`
-- Create: `client/net/network_manager.cpp`
+- Create: `client/net/network_manager.cc`
 - Create: `client/protocol/protocol_dispatcher.h`
-- Create: `client/protocol/protocol_dispatcher.cpp`
-- Test: `client/tests/net/network_queue_test.cpp`
-- Test: `client/tests/protocol/dispatcher_test.cpp`
+- Create: `client/protocol/protocol_dispatcher.cc`
+- Test: `client/tests/net/network_queue_test.cc`
+- Test: `client/tests/protocol/dispatcher_test.cc`
 
-- [ ] **Step 1: Write failing client bootstrap tests**
+- [x] **Step 1: Write failing client bootstrap tests**
 
 Cover:
 - network thread enqueues messages
 - main thread dispatcher consumes them in order
 
-- [ ] **Step 2: Run client bootstrap tests**
+- [x] **Step 2: Run client bootstrap tests**
 
 Run: `ctest --test-dir build --output-on-failure -R "NetworkQueueTest|ClientDispatcherTest"`
 
 Expected: FAIL because client bootstrap and dispatch are missing
 
-- [ ] **Step 3: Implement `GameApp` main loop shell**
+- [x] **Step 3: Implement `GameApp` main loop shell**
 
 Order:
 - pump network
@@ -797,11 +797,11 @@ Order:
 - ui
 - render
 
-- [ ] **Step 4: Implement `NetworkManager` queue handoff**
+- [x] **Step 4: Implement `NetworkManager` queue handoff**
 
 Background thread must never write Scene or UI directly
 
-- [ ] **Step 5: Implement initial dispatcher routes**
+- [x] **Step 5: Implement initial dispatcher routes**
 
 Route:
 - enter scene snapshot
@@ -809,13 +809,13 @@ Route:
 - aoi enter/leave
 - inventory delta
 
-- [ ] **Step 6: Re-run client bootstrap tests**
+- [x] **Step 6: Re-run client bootstrap tests**
 
 Run: `cmake --build build && ctest --test-dir build --output-on-failure -R "NetworkQueueTest|ClientDispatcherTest"`
 
 Expected: PASS
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add client/app client/net client/protocol client/tests
@@ -834,8 +834,8 @@ git commit -m "feat: add client bootstrap and protocol dispatch"
 - Create: `client/view/player_view.h`
 - Create: `client/view/monster_view.h`
 - Create: `client/view/drop_view.h`
-- Test: `client/tests/scene/entity_mapping_test.cpp`
-- Test: `client/tests/model/inventory_model_test.cpp`
+- Test: `client/tests/scene/entity_mapping_test.cc`
+- Test: `client/tests/model/inventory_model_test.cc`
 
 - [ ] **Step 1: Write failing scene/model tests**
 
@@ -888,13 +888,13 @@ git commit -m "feat: add client models scene mapping and entity views"
 
 **Files:**
 - Create: `client/controller/player_controller.h`
-- Create: `client/controller/player_controller.cpp`
+- Create: `client/controller/player_controller.cc`
 - Create: `client/controller/skill_controller.h`
-- Create: `client/controller/skill_controller.cpp`
+- Create: `client/controller/skill_controller.cc`
 - Create: `client/ui/ui_manager.h`
 - Create: `client/ui/inventory_panel.h`
 - Create: `client/debug/dev_panel.h`
-- Test: `client/tests/controller/player_controller_test.cpp`
+- Test: `client/tests/controller/player_controller_test.cc`
 
 - [ ] **Step 1: Write failing controller tests**
 
@@ -948,10 +948,10 @@ git commit -m "feat: add client controllers ui binding and dev panel"
 ### Task 15: End-to-End Closed Loop Integration
 
 **Files:**
-- Create: `server/tests/integration/login_enter_move_combat_pickup_test.cpp`
+- Create: `server/tests/integration/login_enter_move_combat_pickup_test.cc`
 - Create: `tools/replay/closed_loop_scenario.md`
-- Modify: `server/app/server_app.cpp`
-- Modify: `client/app/game_app.cpp`
+- Modify: `server/app/server_app.cc`
+- Modify: `client/app/game_app.cc`
 
 - [ ] **Step 1: Write the end-to-end integration scenario**
 
@@ -1004,10 +1004,10 @@ git commit -m "feat: wire closed loop integration path"
 
 **Files:**
 - Create: `server/gm/gm_command_handler.h`
-- Create: `server/gm/gm_command_handler.cpp`
-- Create: `tools/proto_dump/proto_dump_main.cpp`
-- Create: `server/tests/gm/gm_command_test.cpp`
-- Create: `server/tests/drop/pickup_race_guard_test.cpp`
+- Create: `server/gm/gm_command_handler.cc`
+- Create: `tools/proto_dump/proto_dump_main.cc`
+- Create: `server/tests/gm/gm_command_test.cc`
+- Create: `server/tests/drop/pickup_race_guard_test.cc`
 
 - [ ] **Step 1: Write failing GM and hardening tests**
 

@@ -4,7 +4,7 @@
 
 **Goal:** Convert the unfinished tasks from the dual-end implementation plan into a low-conflict multi-worktree execution schedule that can start immediately from the current verified Task 1-2 baseline.
 
-**Architecture:** `docs/superpowers/plans/2026-03-22-legend-mmorpg-dual-end-implementation-plan.md` remains the functional source of truth for code and test detail. This companion plan only defines worktree boundaries, file ownership, dependency gates, merge order, and verification checkpoints. Parallelism is deliberately limited by hot files such as `server/CMakeLists.txt`, `client/CMakeLists.txt`, `server/scene/scene.cpp`, and `server/protocol/protocol_dispatcher.cpp`, so those files are assigned to one active lane at a time.
+**Architecture:** `docs/superpowers/plans/2026-03-22-legend-mmorpg-dual-end-implementation-plan.md` remains the functional source of truth for code and test detail. This companion plan only defines worktree boundaries, file ownership, dependency gates, merge order, and verification checkpoints. Parallelism is deliberately limited by hot files such as `server/CMakeLists.txt`, `client/CMakeLists.txt`, `server/scene/scene.cc`, and `server/protocol/protocol_dispatcher.cc`, so those files are assigned to one active lane at a time.
 
 **Tech Stack:** Git worktree, Git branches, CMake, GoogleTest, current C++20 server/client repository
 
@@ -21,8 +21,8 @@
 
 ## 1. Ownership Rules
 
-- Only one active worktree may own `server/scene/scene.cpp` at a time.
-- Only one active worktree may own `server/protocol/protocol_dispatcher.cpp` at a time.
+- Only one active worktree may own `server/scene/scene.cc` at a time.
+- Only one active worktree may own `server/protocol/protocol_dispatcher.cc` at a time.
 - Only one active worktree may own `server/CMakeLists.txt` at a time, and only one active worktree may own `client/CMakeLists.txt` at a time.
 - Do not edit `shared/protocol/*.h` from multiple lanes. If the contracts must change, cut a dedicated short-lived `dualend/contract-sync` branch, merge it first, then rebase the affected server and client lanes.
 - Downstream worktrees branch from `dualend/integration-base` after the required gates are merged. Do not branch from a sibling feature branch that has not been merged yet.
@@ -36,7 +36,7 @@
 - Verify: `server/CMakeLists.txt`
 - Verify: `client/CMakeLists.txt`
 
-- [ ] **Step 1: Freeze the current code baseline into an integration branch**
+- [x] **Step 1: Freeze the current code baseline into an integration branch**
 
 Run:
 
@@ -47,7 +47,7 @@ git branch dualend/integration-base "${BASE_REF}"
 
 Expected: `dualend/integration-base` points at the commit that already contains the verified Task 1-2 baseline.
 
-- [ ] **Step 2: Verify the worktree directory is safe to use**
+- [x] **Step 2: Verify the worktree directory is safe to use**
 
 Run:
 
@@ -58,7 +58,7 @@ git check-ignore -q .worktrees
 
 Expected: `.worktrees/` exists and is ignored.
 
-- [ ] **Step 3: Verify the baseline still builds before parallel work starts**
+- [x] **Step 3: Verify the baseline still builds before parallel work starts**
 
 Run:
 
@@ -70,7 +70,7 @@ ctest --test-dir build --output-on-failure -R "ServerBootstrapTest|SharedContrac
 
 Expected: `ServerBootstrapTest` and `SharedContractTest` pass on the verified baseline.
 
-- [ ] **Step 4: Audit the repo against the source plan before launching parallel work**
+- [x] **Step 4: Audit the repo against the source plan before launching parallel work**
 
 Run:
 
@@ -84,7 +84,7 @@ Expected:
 - completed source-plan work is actually present in the tree
 - if `ConfigValidatorTest`, trace context files, or other Task 3 artifacts are missing, treat Task 3 as unfinished work and execute Task 2 below before launching the later server worktrees
 
-- [ ] **Step 5: Resolve the file extension convention once**
+- [x] **Step 5: Resolve the file extension convention once**
 
 Run:
 
@@ -94,40 +94,41 @@ rg --files server client shared | rg '\.(cc|cpp)$'
 
 Expected:
 - choose one extension convention before Wave 1 starts
-- current tree already uses `.cc` in multiple existing files, while the source plan names many new files as `.cpp`
-- update the source plan or the implementation conventions once, then keep every later worktree consistent
+- current tree uses `.cc` for the existing C++ implementation and test files
+- the remaining source-plan paths have been normalized to `.cc`
+- keep every later worktree consistent with `.cc`
 
-- [ ] **Step 6: Record the hot files that require merge discipline**
+- [x] **Step 6: Record the hot files that require merge discipline**
 
 Hot files:
 - `server/CMakeLists.txt`
 - `client/CMakeLists.txt`
-- `server/scene/scene.cpp`
-- `server/protocol/protocol_dispatcher.cpp`
+- `server/scene/scene.cc`
+- `server/protocol/protocol_dispatcher.cc`
 
 ### Task 2: Launch Worktree T0 - Logging, Trace Context, Config Validation
 
 **Files:**
 - Create/Modify: `server/app/server_app.h`
-- Create/Modify: `server/app/server_app.cpp`
+- Create/Modify: `server/app/server_app.cc`
 - Create/Modify: `server/core/log/logger.h`
-- Create/Modify: `server/core/log/logger.cpp`
+- Create/Modify: `server/core/log/logger.cc`
 - Create/Modify: `server/core/log/trace_context.h`
 - Create/Modify: `server/config/config_manager.h`
-- Create/Modify: `server/config/config_manager.cpp`
+- Create/Modify: `server/config/config_manager.cc`
 - Create/Modify: `server/config/config_validator.h`
 - Create/Modify: `server/tests/config/config_validator_test.cc`
 - Modify: `server/CMakeLists.txt`
 - Source tasks: original Task 3
 
-- [ ] **Step 1: Treat this task as blocking baseline repair**
+- [x] **Step 1: Treat this task as blocking baseline repair**
 
 Reason:
 - the source plan marks Task 3 complete
 - the current repo does not contain the expected logging, trace-context, or config-validator artifacts
 - later server worktrees should not branch from a baseline that lies about config and trace coverage
 
-- [ ] **Step 2: Create the Task 3 repair worktree from the integration base**
+- [x] **Step 2: Create the Task 3 repair worktree from the integration base**
 
 Run:
 
@@ -135,13 +136,13 @@ Run:
 git worktree add .worktrees/dualend-task3-baseline -b dualend/task3-baseline dualend/integration-base
 ```
 
-- [ ] **Step 3: Implement only original Task 3 in this worktree**
+- [x] **Step 3: Implement only original Task 3 in this worktree**
 
 Constraints:
 - own `server/app/server_app.*`, `server/core/log/**`, `server/config/**`, `server/tests/config/**`
 - do not edit `server/scene/**`, `server/player/**`, `client/**`
 
-- [ ] **Step 4: Run the Task 3 targeted verification**
+- [x] **Step 4: Run the Task 3 targeted verification**
 
 Run:
 
@@ -153,7 +154,7 @@ ctest --test-dir build --output-on-failure -R "ConfigValidatorTest|ServerBootstr
 
 Expected: PASS.
 
-- [ ] **Step 5: Merge this worktree immediately after verification**
+- [x] **Step 5: Merge this worktree immediately after verification**
 
 Run:
 
@@ -169,23 +170,23 @@ Expected: Gate T0 complete.
 **Files:**
 - Create/Modify: `server/data/character_data.h`
 - Create/Modify: `server/data/inventory.h`
-- Create/Modify: `server/data/skill_book.h`
+- Note: learned skills remain in `server/data/character_data.h` as `CharacterData::learned_skill_ids`; no separate `server/data/skill_book.h` artifact is planned
 - Create/Modify: `server/db/player_repository.h`
-- Create/Modify: `server/db/player_repository.cpp`
+- Create/Modify: `server/db/player_repository.cc`
 - Create/Modify: `server/db/save_service.h`
-- Create/Modify: `server/db/save_service.cpp`
-- Create/Modify: `server/tests/data/inventory_test.cpp`
-- Create/Modify: `server/tests/data/save_service_test.cpp`
+- Create/Modify: `server/db/save_service.cc`
+- Create/Modify: `server/tests/data/inventory_test.cc`
+- Create/Modify: `server/tests/data/save_service_test.cc`
 - Modify: `server/CMakeLists.txt`
 - Source tasks: original Task 4
 
-- [ ] **Step 1: Wait until Gate T0 is merged**
+- [x] **Step 1: Wait until Gate T0 is merged**
 
 Reason:
 - Worktree A still modifies `server/CMakeLists.txt`
 - do not overlap it with the Task 3 repair lane on the same hot file
 
-- [ ] **Step 2: Create the persistence worktree from the integration base**
+- [x] **Step 2: Create the persistence worktree from the integration base**
 
 Run:
 
@@ -193,13 +194,13 @@ Run:
 git worktree add .worktrees/dualend-persistence -b dualend/persistence dualend/integration-base
 ```
 
-- [ ] **Step 3: Implement only original Task 4 in this worktree**
+- [x] **Step 3: Implement only original Task 4 in this worktree**
 
 Constraints:
 - own `server/data/**`, `server/db/**`, `server/tests/data/**`
 - do not edit `server/protocol/**`, `server/scene/**`, `client/**`
 
-- [ ] **Step 4: Run the Task 4 targeted verification**
+- [x] **Step 4: Run the Task 4 targeted verification**
 
 Run:
 
@@ -211,7 +212,7 @@ ctest --test-dir build --output-on-failure -R "InventoryTest|SaveServiceTest"
 
 Expected: PASS.
 
-- [ ] **Step 5: Merge this worktree immediately after verification**
+- [x] **Step 5: Merge this worktree immediately after verification**
 
 Run:
 
@@ -226,13 +227,13 @@ Expected: Gate A complete.
 
 **Files:**
 - Create/Modify: `server/scene/scene.h`
-- Create/Modify: `server/scene/scene.cpp`
+- Create/Modify: `server/scene/scene.cc`
 - Create/Modify: `server/scene/scene_manager.h`
 - Create/Modify: `server/ecs/components.h`
 - Create/Modify: `server/ecs/system_context.h`
 - Create/Modify: `server/entity/entity_factory.h`
-- Create/Modify: `server/entity/entity_factory.cpp`
-- Create/Modify: `server/tests/scene/scene_spawn_test.cpp`
+- Create/Modify: `server/entity/entity_factory.cc`
+- Create/Modify: `server/tests/scene/scene_spawn_test.cc`
 - Modify: `server/CMakeLists.txt`
 - Source tasks: original Task 6
 
@@ -254,7 +255,7 @@ git worktree add .worktrees/dualend-scene-foundation -b dualend/scene-foundation
 - [ ] **Step 3: Implement only original Task 6 in this worktree**
 
 Constraints:
-- own `server/scene/**`, `server/ecs/**`, `server/entity/**`, `server/tests/scene/scene_spawn_test.cpp`
+- own `server/scene/**`, `server/ecs/**`, `server/entity/**`, `server/tests/scene/scene_spawn_test.cc`
 - do not edit `server/protocol/**`, `server/player/**`, `server/db/**`, `client/**`
 
 - [ ] **Step 4: Run the Task 6 targeted verification**
@@ -284,22 +285,22 @@ Expected: Gate B complete.
 
 **Files:**
 - Create/Modify: `client/app/game_app.h`
-- Create/Modify: `client/app/game_app.cpp`
+- Create/Modify: `client/app/game_app.cc`
 - Create/Modify: `client/net/network_manager.h`
-- Create/Modify: `client/net/network_manager.cpp`
+- Create/Modify: `client/net/network_manager.cc`
 - Create/Modify: `client/protocol/protocol_dispatcher.h`
-- Create/Modify: `client/protocol/protocol_dispatcher.cpp`
-- Create/Modify: `client/tests/net/network_queue_test.cpp`
-- Create/Modify: `client/tests/protocol/dispatcher_test.cpp`
+- Create/Modify: `client/protocol/protocol_dispatcher.cc`
+- Create/Modify: `client/tests/net/network_queue_test.cc`
+- Create/Modify: `client/tests/protocol/dispatcher_test.cc`
 - Modify: `client/CMakeLists.txt`
 - Source tasks: original Task 12
 
-- [ ] **Step 1: Wait until Gate T0 is merged**
+- [x] **Step 1: Wait until Gate T0 is merged**
 
 Reason:
 - Wave 1 starts from the repaired baseline, even though Worktree C does not touch server files
 
-- [ ] **Step 2: Create the client bootstrap worktree from the integration base**
+- [x] **Step 2: Create the client bootstrap worktree from the integration base**
 
 Run:
 
@@ -307,13 +308,13 @@ Run:
 git worktree add .worktrees/dualend-client-bootstrap -b dualend/client-bootstrap dualend/integration-base
 ```
 
-- [ ] **Step 3: Implement only original Task 12 in this worktree**
+- [x] **Step 3: Implement only original Task 12 in this worktree**
 
 Constraints:
 - own `client/app/**`, `client/net/**`, `client/protocol/**`, `client/tests/net/**`, `client/tests/protocol/**`
 - do not edit `server/**`
 
-- [ ] **Step 4: Run the Task 12 targeted verification**
+- [x] **Step 4: Run the Task 12 targeted verification**
 
 Run:
 
@@ -325,7 +326,7 @@ ctest --test-dir build --output-on-failure -R "NetworkQueueTest|ClientDispatcher
 
 Expected: PASS.
 
-- [ ] **Step 5: Merge this worktree immediately after verification**
+- [x] **Step 5: Merge this worktree immediately after verification**
 
 Run:
 
@@ -341,22 +342,22 @@ Expected: Gate C complete.
 **Files:**
 - Create/Modify: `server/net/network_server.h`
 - Create/Modify: `server/net/session.h`
-- Create/Modify: `server/net/session.cpp`
+- Create/Modify: `server/net/session.cc`
 - Create/Modify: `server/protocol/protocol_dispatcher.h`
-- Create/Modify: `server/protocol/protocol_dispatcher.cpp`
+- Create/Modify: `server/protocol/protocol_dispatcher.cc`
 - Create/Modify: `server/player/player.h`
-- Create/Modify: `server/player/player.cpp`
+- Create/Modify: `server/player/player.cc`
 - Create/Modify: `server/player/player_manager.h`
 - Create/Modify: `server/aoi/aoi_system.h`
-- Create/Modify: `server/aoi/aoi_system.cpp`
+- Create/Modify: `server/aoi/aoi_system.cc`
 - Create/Modify: `server/scene/movement_system.h`
-- Create/Modify: `server/scene/movement_system.cpp`
-- Modify: `server/scene/scene.cpp`
-- Create/Modify: `server/tests/player/player_login_flow_test.cpp`
-- Create/Modify: `server/tests/aoi/aoi_enter_leave_test.cpp`
-- Create/Modify: `server/tests/scene/enter_scene_snapshot_test.cpp`
-- Create/Modify: `server/tests/scene/movement_system_test.cpp`
-- Create/Modify: `server/tests/scene/move_correction_test.cpp`
+- Create/Modify: `server/scene/movement_system.cc`
+- Modify: `server/scene/scene.cc`
+- Create/Modify: `server/tests/player/player_login_flow_test.cc`
+- Create/Modify: `server/tests/aoi/aoi_enter_leave_test.cc`
+- Create/Modify: `server/tests/scene/enter_scene_snapshot_test.cc`
+- Create/Modify: `server/tests/scene/movement_system_test.cc`
+- Create/Modify: `server/tests/scene/move_correction_test.cc`
 - Modify: `server/CMakeLists.txt`
 - Source tasks: original Tasks 5, 7, 8
 
@@ -377,15 +378,15 @@ git worktree add .worktrees/dualend-server-entry-movement -b dualend/server-entr
 - [ ] **Step 3: Implement original Tasks 5, 7, and 8 in one lane**
 
 Why grouped:
-- `server/protocol/protocol_dispatcher.cpp` is shared by Task 5 and Task 7
-- `server/scene/scene.cpp` is shared by Task 7 and Task 8
+- `server/protocol/protocol_dispatcher.cc` is shared by Task 5 and Task 7
+- `server/scene/scene.cc` is shared by Task 7 and Task 8
 - splitting these tasks would create constant rebases for the same two hot files
 
 - [ ] **Step 4: Keep this worktree as the exclusive owner of server hot files during execution**
 
 Exclusive hot-file ownership:
-- `server/protocol/protocol_dispatcher.cpp`
-- `server/scene/scene.cpp`
+- `server/protocol/protocol_dispatcher.cc`
+- `server/scene/scene.cc`
 
 - [ ] **Step 5: Run the combined targeted verification**
 
@@ -423,15 +424,15 @@ Expected: Gate D complete.
 - Create/Modify: `client/view/monster_view.h`
 - Create/Modify: `client/view/drop_view.h`
 - Create/Modify: `client/controller/player_controller.h`
-- Create/Modify: `client/controller/player_controller.cpp`
+- Create/Modify: `client/controller/player_controller.cc`
 - Create/Modify: `client/controller/skill_controller.h`
-- Create/Modify: `client/controller/skill_controller.cpp`
+- Create/Modify: `client/controller/skill_controller.cc`
 - Create/Modify: `client/ui/ui_manager.h`
 - Create/Modify: `client/ui/inventory_panel.h`
 - Create/Modify: `client/debug/dev_panel.h`
-- Create/Modify: `client/tests/scene/entity_mapping_test.cpp`
-- Create/Modify: `client/tests/model/inventory_model_test.cpp`
-- Create/Modify: `client/tests/controller/player_controller_test.cpp`
+- Create/Modify: `client/tests/scene/entity_mapping_test.cc`
+- Create/Modify: `client/tests/model/inventory_model_test.cc`
+- Create/Modify: `client/tests/controller/player_controller_test.cc`
 - Modify: `client/CMakeLists.txt`
 - Source tasks: original Tasks 13, 14
 
@@ -483,21 +484,21 @@ Expected: Gate E complete.
 
 **Files:**
 - Create/Modify: `server/skill/skill_system.h`
-- Create/Modify: `server/skill/skill_system.cpp`
+- Create/Modify: `server/skill/skill_system.cc`
 - Create/Modify: `server/battle/battle_system.h`
-- Create/Modify: `server/battle/battle_system.cpp`
+- Create/Modify: `server/battle/battle_system.cc`
 - Create/Modify: `server/buff/buff_system.h`
-- Create/Modify: `server/buff/buff_system.cpp`
+- Create/Modify: `server/buff/buff_system.cc`
 - Create/Modify: `server/ai/ai_system.h`
-- Create/Modify: `server/ai/ai_system.cpp`
+- Create/Modify: `server/ai/ai_system.cc`
 - Create/Modify: `server/scene/drop_system.h`
-- Create/Modify: `server/scene/drop_system.cpp`
-- Modify: `server/scene/scene.cpp`
-- Create/Modify: `server/tests/battle/skill_cast_test.cpp`
-- Create/Modify: `server/tests/battle/damage_resolution_test.cpp`
-- Create/Modify: `server/tests/buff/buff_expire_test.cpp`
-- Create/Modify: `server/tests/ai/monster_ai_test.cpp`
-- Create/Modify: `server/tests/drop/pickup_idempotency_test.cpp`
+- Create/Modify: `server/scene/drop_system.cc`
+- Modify: `server/scene/scene.cc`
+- Create/Modify: `server/tests/battle/skill_cast_test.cc`
+- Create/Modify: `server/tests/battle/damage_resolution_test.cc`
+- Create/Modify: `server/tests/buff/buff_expire_test.cc`
+- Create/Modify: `server/tests/ai/monster_ai_test.cc`
+- Create/Modify: `server/tests/drop/pickup_idempotency_test.cc`
 - Modify: `server/CMakeLists.txt`
 - Source tasks: original Tasks 9, 10
 
@@ -520,9 +521,9 @@ git worktree add .worktrees/dualend-server-combat-drop -b dualend/server-combat-
 
 Why grouped:
 - both tasks extend the same scene tick and death/drop pipeline
-- `server/scene/scene.cpp` would otherwise churn across multiple worktrees again
+- `server/scene/scene.cc` would otherwise churn across multiple worktrees again
 
-- [ ] **Step 4: Keep this worktree as the exclusive owner of `server/scene/scene.cpp` until merge**
+- [ ] **Step 4: Keep this worktree as the exclusive owner of `server/scene/scene.cc` until merge**
 
 Allowed shared edits:
 - `server/CMakeLists.txt`
@@ -554,11 +555,11 @@ Expected: Gate F complete.
 ### Task 9: Launch Worktree G - Save, Logout, Disconnect, Reconnect
 
 **Files:**
-- Modify: `server/player/player.cpp`
-- Modify: `server/db/save_service.cpp`
-- Modify: `server/protocol/protocol_dispatcher.cpp`
-- Create/Modify: `server/tests/player/logout_save_test.cpp`
-- Create/Modify: `server/tests/player/reconnect_snapshot_test.cpp`
+- Modify: `server/player/player.cc`
+- Modify: `server/db/save_service.cc`
+- Modify: `server/protocol/protocol_dispatcher.cc`
+- Create/Modify: `server/tests/player/logout_save_test.cc`
+- Create/Modify: `server/tests/player/reconnect_snapshot_test.cc`
 - Modify: `server/CMakeLists.txt`
 - Source tasks: original Task 11
 
@@ -580,7 +581,7 @@ git worktree add .worktrees/dualend-save-reconnect -b dualend/save-reconnect dua
 - [ ] **Step 3: Implement only original Task 11 in this worktree**
 
 Constraints:
-- own `server/player/player.cpp`, `server/db/save_service.cpp`, `server/protocol/protocol_dispatcher.cpp`, and reconnect tests
+- own `server/player/player.cc`, `server/db/save_service.cc`, `server/protocol/protocol_dispatcher.cc`, and reconnect tests
 - do not edit `client/**`
 
 - [ ] **Step 4: Run the Task 11 targeted verification**
@@ -609,10 +610,10 @@ Expected: Gate G complete.
 ### Task 10: Launch Worktree H - Closed Loop Integration
 
 **Files:**
-- Create/Modify: `server/tests/integration/login_enter_move_combat_pickup_test.cpp`
+- Create/Modify: `server/tests/integration/login_enter_move_combat_pickup_test.cc`
 - Create/Modify: `tools/replay/closed_loop_scenario.md`
-- Modify: `server/app/server_app.cpp`
-- Modify: `client/app/game_app.cpp`
+- Modify: `server/app/server_app.cc`
+- Modify: `client/app/game_app.cc`
 - Source tasks: original Task 15
 
 - [ ] **Step 1: Wait until Gate E and Gate G are merged**
@@ -632,7 +633,7 @@ git worktree add .worktrees/dualend-closed-loop -b dualend/closed-loop dualend/i
 - [ ] **Step 3: Implement only original Task 15 in this worktree**
 
 Constraints:
-- own `server/app/server_app.cpp`, `client/app/game_app.cpp`, integration tests, and replay docs
+- own `server/app/server_app.cc`, `client/app/game_app.cc`, integration tests, and replay docs
 - do not introduce new GM or tracing surfaces here
 
 - [ ] **Step 4: Run the Task 15 targeted verification**
@@ -671,14 +672,14 @@ Expected: Gate H complete.
 
 **Files:**
 - Create/Modify: `server/gm/gm_command_handler.h`
-- Create/Modify: `server/gm/gm_command_handler.cpp`
+- Create/Modify: `server/gm/gm_command_handler.cc`
 - Create/Modify: `server/core/log/logger.h`
-- Create/Modify: `server/core/log/logger.cpp`
+- Create/Modify: `server/core/log/logger.cc`
 - Create/Modify: `server/core/log/trace_context.h`
-- Modify: `server/protocol/protocol_dispatcher.cpp`
-- Create/Modify: `tools/proto_dump/proto_dump_main.cpp`
-- Create/Modify: `server/tests/gm/gm_command_test.cpp`
-- Create/Modify: `server/tests/drop/pickup_race_guard_test.cpp`
+- Modify: `server/protocol/protocol_dispatcher.cc`
+- Create/Modify: `tools/proto_dump/proto_dump_main.cc`
+- Create/Modify: `server/tests/gm/gm_command_test.cc`
+- Create/Modify: `server/tests/drop/pickup_race_guard_test.cc`
 - Modify: `server/CMakeLists.txt`
 - Source tasks: original Task 16
 
@@ -700,8 +701,8 @@ git worktree add .worktrees/dualend-hardening -b dualend/hardening dualend/integ
 - [ ] **Step 3: Implement original Task 16 in this worktree**
 
 Constraints:
-- own `server/gm/**`, `tools/proto_dump/**`, `server/tests/gm/**`, `server/tests/drop/pickup_race_guard_test.cpp`
-- own protocol tracing edits in `server/core/log/logger.*`, `server/core/log/trace_context.h`, and `server/protocol/protocol_dispatcher.cpp`
+- own `server/gm/**`, `tools/proto_dump/**`, `server/tests/gm/**`, `server/tests/drop/pickup_race_guard_test.cc`
+- own protocol tracing edits in `server/core/log/logger.*`, `server/core/log/trace_context.h`, and `server/protocol/protocol_dispatcher.cc`
 - avoid `server/app/**` and `client/app/**`; if a trace hook appears to require those files, stop and split it into a separate reviewed follow-up
 
 - [ ] **Step 4: Run the hardening verification set**
@@ -799,7 +800,7 @@ Expected: Gate I complete.
 - Do not start Worktree F before Gate D is merged.
 - Do not start Worktree G before Gate F is merged.
 - Do not merge Worktree I before Worktree H is merged or rebased in.
-- Do not let two active worktrees change `server/scene/scene.cpp` or `server/protocol/protocol_dispatcher.cpp` simultaneously.
+- Do not let two active worktrees change `server/scene/scene.cc` or `server/protocol/protocol_dispatcher.cc` simultaneously.
 
 ## 4. Contract-Sync Escape Hatch
 
