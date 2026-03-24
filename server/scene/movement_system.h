@@ -23,7 +23,7 @@ class MovementSystem {
 
   void AddBlockedRect(BlockedRect blocked_rect);
 
-  bool ApplyMove(Scene& scene, const shared::MoveRequest& move_request,
+  bool ApplyMove(Scene* scene, const shared::MoveRequest& move_request,
                  float delta_seconds,
                  std::optional<shared::MoveCorrection>* correction) const;
 

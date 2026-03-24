@@ -27,7 +27,7 @@ class Player {
 
   void BindSession(Session* session);
   void SetControlledEntity(shared::EntityId entity_id, std::uint32_t scene_id);
-  void SubmitMove(Scene& scene, const shared::MoveRequest& move_request);
+  void SubmitMove(Scene* scene, const shared::MoveRequest& move_request);
   void MarkDirty();
   void ClearDirty();
 

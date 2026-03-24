@@ -28,8 +28,12 @@ void Player::SetControlledEntity(shared::EntityId entity_id,
   current_scene_id_ = scene_id;
 }
 
-void Player::SubmitMove(Scene& scene, const shared::MoveRequest& move_request) {
-  scene.Enqueue(SceneCommand{
+void Player::SubmitMove(Scene* scene, const shared::MoveRequest& move_request) {
+  if (scene == nullptr) {
+    return;
+  }
+
+  scene->Enqueue(SceneCommand{
       SceneCommandType::kMove,
       move_request,
   });

@@ -29,7 +29,7 @@ std::optional<SceneCommand> Scene::Dequeue() {
   return command;
 }
 
-void Scene::Tick(MovementSystem* movement_system, float delta_seconds) {
+void Scene::Tick(const MovementSystem* movement_system, float delta_seconds) {
   recent_move_corrections_.clear();
   if (movement_system == nullptr) {
     return;
@@ -47,7 +47,7 @@ void Scene::Tick(MovementSystem* movement_system, float delta_seconds) {
 
     std::optional<shared::MoveCorrection> correction;
     const bool accepted = movement_system->ApplyMove(
-        *this, command->move_request, delta_seconds, &correction);
+        this, command->move_request, delta_seconds, &correction);
     if (!accepted && correction.has_value()) {
       recent_move_corrections_.push_back(*correction);
     }

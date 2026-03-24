@@ -19,13 +19,13 @@ class ProtocolDispatcher {
   ProtocolDispatcher(PlayerManager* player_manager,
                      SceneManager* scene_manager);
 
-  shared::LoginResponse HandleLogin(Session& session,
+  shared::LoginResponse HandleLogin(Session* session,
                                     const shared::LoginRequest& login_request);
 
   std::optional<shared::EnterSceneSnapshot> HandleEnterScene(
-      Session& session, const shared::EnterSceneRequest& enter_scene_request);
+      Session* session, const shared::EnterSceneRequest& enter_scene_request);
 
-  bool HandleMoveRequest(Session& session,
+  bool HandleMoveRequest(const Session* session,
                          const shared::MoveRequest& move_request);
 
  private:

@@ -34,7 +34,7 @@ class Scene {
   void Enqueue(SceneCommand command);
   bool HasPendingCommands() const;
   std::optional<SceneCommand> Dequeue();
-  void Tick(MovementSystem* movement_system, float delta_seconds);
+  void Tick(const MovementSystem* movement_system, float delta_seconds);
 
   bool RegisterEntity(shared::EntityId entity_id, entt::entity entity);
   bool RemoveEntity(shared::EntityId entity_id);

@@ -17,12 +17,15 @@ namespace server {
 class PlayerManager {
  public:
   Player& Upsert(shared::PlayerId player_id, CharacterData data) {
-    auto [it, inserted] = players_.try_emplace(
-        player_id, std::make_unique<Player>(std::move(data)));
-    if (!inserted) {
-      it->second->mutable_data() = std::move(data);
+    const auto existing = players_.find(player_id);
+    if (existing != players_.end()) {
+      existing->second->mutable_data() = std::move(data);
+      return *(existing->second);
     }
-    return *(it->second);
+
+    auto [inserted, _] =
+        players_.emplace(player_id, std::make_unique<Player>(std::move(data)));
+    return *(inserted->second);
   }
 
   Player* Find(shared::PlayerId player_id) {

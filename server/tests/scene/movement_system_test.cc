@@ -29,7 +29,7 @@ TEST(MovementSystemTest, LegalMoveAdvancesPosition) {
   std::optional<shared::MoveCorrection> correction;
 
   const bool accepted = movement_system.ApplyMove(
-      scene,
+      &scene,
       shared::MoveRequest{entity_id, shared::ScenePosition{3.0F, 0.0F}, 1, 1},
       1.0F, &correction);
 
@@ -53,7 +53,7 @@ TEST(MovementSystemTest, OverspeedMoveIsRejectedWithCorrection) {
   std::optional<shared::MoveCorrection> correction;
 
   const bool accepted = movement_system.ApplyMove(
-      scene,
+      &scene,
       shared::MoveRequest{entity_id, shared::ScenePosition{20.0F, 0.0F}, 2, 2},
       1.0F, &correction);
 
@@ -77,7 +77,7 @@ TEST(MovementSystemTest, BlockedTileMoveIsRejectedWithCorrection) {
   std::optional<shared::MoveCorrection> correction;
 
   const bool accepted = movement_system.ApplyMove(
-      scene,
+      &scene,
       shared::MoveRequest{entity_id, shared::ScenePosition{4.0F, 0.0F}, 3, 3},
       1.0F, &correction);
 

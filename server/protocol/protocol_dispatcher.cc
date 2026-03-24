@@ -13,14 +13,21 @@ ProtocolDispatcher::ProtocolDispatcher(PlayerManager* player_manager,
     : player_manager_(player_manager), scene_manager_(scene_manager) {}
 
 shared::LoginResponse ProtocolDispatcher::HandleLogin(
-    Session& session, const shared::LoginRequest& login_request) {
+    Session* session, const shared::LoginRequest& login_request) {
+  if (session == nullptr) {
+    return shared::LoginResponse{
+        shared::ErrorCode::kInvalidCredentials,
+        shared::PlayerId{},
+    };
+  }
+
   const shared::PlayerId player_id{next_player_id_value_++};
   Player& player = player_manager_->Upsert(
       player_id, BuildDefaultCharacter(player_id, login_request));
-  player.BindSession(&session);
+  player.BindSession(session);
 
-  session.Authenticate(player_id);
-  session.SelectCharacter();
+  session->Authenticate(player_id);
+  session->SelectCharacter();
 
   return shared::LoginResponse{
       shared::ErrorCode::kOk,
@@ -29,11 +36,11 @@ shared::LoginResponse ProtocolDispatcher::HandleLogin(
 }
 
 std::optional<shared::EnterSceneSnapshot> ProtocolDispatcher::HandleEnterScene(
-    Session& session, const shared::EnterSceneRequest& enter_scene_request) {
-  if (!session.player_id().has_value()) {
+    Session* session, const shared::EnterSceneRequest& enter_scene_request) {
+  if (session == nullptr || !session->player_id().has_value()) {
     return std::nullopt;
   }
-  if (*session.player_id() != enter_scene_request.player_id) {
+  if (*session->player_id() != enter_scene_request.player_id) {
     return std::nullopt;
   }
 
@@ -49,7 +56,7 @@ std::optional<shared::EnterSceneSnapshot> ProtocolDispatcher::HandleEnterScene(
   entity_factory.SpawnPlayer(player->data(), controlled_entity_id);
   player->SetControlledEntity(controlled_entity_id,
                               enter_scene_request.scene_id);
-  session.EnterScene();
+  session->EnterScene();
 
   AoiSystem aoi_system;
   return aoi_system.BuildEnterSceneSnapshot(
@@ -58,13 +65,13 @@ std::optional<shared::EnterSceneSnapshot> ProtocolDispatcher::HandleEnterScene(
 }
 
 bool ProtocolDispatcher::HandleMoveRequest(
-    Session& session, const shared::MoveRequest& move_request) {
-  if (session.state() != SessionState::kInScene ||
-      !session.player_id().has_value()) {
+    const Session* session, const shared::MoveRequest& move_request) {
+  if (session == nullptr || session->state() != SessionState::kInScene ||
+      !session->player_id().has_value()) {
     return false;
   }
 
-  Player* player = player_manager_->Find(*session.player_id());
+  Player* player = player_manager_->Find(*session->player_id());
   if (player == nullptr || !player->controlled_entity_id().has_value()) {
     return false;
   }
@@ -77,7 +84,7 @@ bool ProtocolDispatcher::HandleMoveRequest(
     return false;
   }
 
-  player->SubmitMove(*scene, move_request);
+  player->SubmitMove(scene, move_request);
   return true;
 }
 

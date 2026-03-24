@@ -1,5 +1,6 @@
 #include "server/scene/movement_system.h"
 
+#include <algorithm>
 #include <cmath>
 #include <optional>
 
@@ -17,18 +18,22 @@ void MovementSystem::AddBlockedRect(BlockedRect blocked_rect) {
 }
 
 bool MovementSystem::ApplyMove(
-    Scene& scene, const shared::MoveRequest& move_request, float delta_seconds,
+    Scene* scene, const shared::MoveRequest& move_request, float delta_seconds,
     std::optional<shared::MoveCorrection>* correction) const {
   if (correction != nullptr) {
     correction->reset();
   }
+  if (scene == nullptr) {
+    return false;
+  }
 
-  const std::optional<entt::entity> entity = scene.Find(move_request.entity_id);
+  const std::optional<entt::entity> entity =
+      scene->Find(move_request.entity_id);
   if (!entity.has_value()) {
     return false;
   }
 
-  auto& registry = scene.registry();
+  auto& registry = scene->registry();
   if (!registry.all_of<ecs::PositionComponent>(*entity)) {
     return false;
   }
@@ -65,13 +70,13 @@ bool MovementSystem::ApplyMove(
 }
 
 bool MovementSystem::IsBlocked(const shared::ScenePosition& position) const {
-  for (const BlockedRect& blocked_rect : blocked_rects_) {
-    if (position.x >= blocked_rect.min_x && position.x <= blocked_rect.max_x &&
-        position.y >= blocked_rect.min_y && position.y <= blocked_rect.max_y) {
-      return true;
-    }
-  }
-  return false;
+  return std::any_of(blocked_rects_.begin(), blocked_rects_.end(),
+                     [&position](const BlockedRect& blocked_rect) {
+                       return position.x >= blocked_rect.min_x &&
+                              position.x <= blocked_rect.max_x &&
+                              position.y >= blocked_rect.min_y &&
+                              position.y <= blocked_rect.max_y;
+                     });
 }
 
 }  // namespace server
