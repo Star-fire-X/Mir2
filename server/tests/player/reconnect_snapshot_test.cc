@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <vector>
 
 #include "gtest/gtest.h"
 #include "server/db/save_service.h"
