@@ -47,7 +47,8 @@ entt::entity EntityFactory::SpawnMonster(
       entity, ecs::CombatStateComponent{80, 80, false});
   registry.emplace<ecs::MonsterRefComponent>(
       entity, ecs::MonsterRefComponent{monster_template_id});
-  registry.emplace<ecs::AiStateComponent>(entity, ecs::AiStateComponent{true});
+  registry.emplace<ecs::AiStateComponent>(
+      entity, ecs::AiStateComponent{ecs::AiStateComponent::State::kIdle, true});
   registry.emplace<ecs::HateListComponent>(entity, ecs::HateListComponent{});
   return entity;
 }

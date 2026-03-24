@@ -63,6 +63,16 @@ bool Scene::RemoveEntity(shared::EntityId entity_id) {
   return entity_index_.erase(entity_id) > 0;
 }
 
+bool Scene::DestroyEntity(shared::EntityId entity_id) {
+  const std::optional<entt::entity> entity = Find(entity_id);
+  if (!entity.has_value()) {
+    return false;
+  }
+  registry_.destroy(*entity);
+  entity_index_.erase(entity_id);
+  return true;
+}
+
 std::optional<entt::entity> Scene::Find(shared::EntityId entity_id) const {
   const auto it = entity_index_.find(entity_id);
   if (it == entity_index_.end()) {
@@ -112,6 +122,8 @@ std::optional<shared::VisibleEntitySnapshot> Scene::BuildVisibleSnapshot(
     kind = shared::VisibleEntityKind::kPlayer;
   } else if (registry_.all_of<ecs::MonsterRefComponent>(*entity)) {
     kind = shared::VisibleEntityKind::kMonster;
+  } else if (registry_.all_of<ecs::DropRefComponent>(*entity)) {
+    kind = shared::VisibleEntityKind::kDrop;
   }
 
   return shared::VisibleEntitySnapshot{

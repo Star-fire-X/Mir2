@@ -38,6 +38,7 @@ class Scene {
 
   bool RegisterEntity(shared::EntityId entity_id, entt::entity entity);
   bool RemoveEntity(shared::EntityId entity_id);
+  bool DestroyEntity(shared::EntityId entity_id);
   std::optional<entt::entity> Find(shared::EntityId entity_id) const;
   std::size_t EntityCount() const;
   std::vector<shared::EntityId> EntityIds() const;

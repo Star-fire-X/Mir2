@@ -2,6 +2,7 @@
 #define SERVER_ECS_COMPONENTS_H_
 
 #include <cstdint>
+#include <unordered_map>
 #include <vector>
 
 #include "shared/protocol/scene_messages.h"
@@ -39,10 +40,13 @@ struct CombatStateComponent {
 
 struct SkillRuntimeComponent {
   std::vector<std::uint32_t> cooldown_skill_ids;
+  std::unordered_map<std::uint32_t, float> cooldown_until_by_skill_id;
+  std::uint32_t current_mp = 0;
 };
 
 struct BuffContainerComponent {
   std::vector<std::uint32_t> buff_ids;
+  std::unordered_map<std::uint32_t, float> remaining_seconds_by_buff_id;
 };
 
 struct AoiStateComponent {
@@ -58,11 +62,27 @@ struct MonsterRefComponent {
 };
 
 struct AiStateComponent {
+  enum class State : std::uint8_t {
+    kIdle = 0,
+    kDetect = 1,
+    kChase = 2,
+    kAttack = 3,
+    kDisengage = 4,
+    kReturn = 5,
+  };
+
+  State state = State::kIdle;
   bool active = true;
 };
 
 struct HateListComponent {
   std::vector<shared::EntityId> targets;
+};
+
+struct DropRefComponent {
+  std::uint32_t item_template_id = 0;
+  std::uint32_t item_count = 0;
+  bool picked = false;
 };
 
 }  // namespace server::ecs
