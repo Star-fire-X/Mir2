@@ -6,6 +6,7 @@
 #include <optional>
 #include <queue>
 #include <unordered_map>
+#include <vector>
 
 #include "entt/entity/fwd.hpp"
 #include "entt/entity/registry.hpp"
@@ -14,6 +15,8 @@
 
 namespace server {
 
+class MovementSystem;
+
 enum class SceneCommandType : std::uint8_t {
   kUnknown = 0,
   kMove = 1,
@@ -21,8 +24,7 @@ enum class SceneCommandType : std::uint8_t {
 
 struct SceneCommand {
   SceneCommandType type = SceneCommandType::kUnknown;
-  shared::EntityId entity_id{};
-  shared::ScenePosition target_position{};
+  shared::MoveRequest move_request{};
 };
 
 class Scene {
@@ -32,11 +34,20 @@ class Scene {
   void Enqueue(SceneCommand command);
   bool HasPendingCommands() const;
   std::optional<SceneCommand> Dequeue();
+  void Tick(const MovementSystem* movement_system, float delta_seconds);
 
   bool RegisterEntity(shared::EntityId entity_id, entt::entity entity);
   bool RemoveEntity(shared::EntityId entity_id);
   std::optional<entt::entity> Find(shared::EntityId entity_id) const;
   std::size_t EntityCount() const;
+  std::vector<shared::EntityId> EntityIds() const;
+  std::optional<shared::ScenePosition> GetPosition(
+      shared::EntityId entity_id) const;
+  std::optional<shared::VisibleEntitySnapshot> BuildVisibleSnapshot(
+      shared::EntityId entity_id) const;
+
+  const std::vector<shared::MoveCorrection>& recent_move_corrections() const;
+  void ClearRecentMoveCorrections();
 
   entt::registry& registry();
   const entt::registry& registry() const;
@@ -50,6 +61,7 @@ class Scene {
   std::queue<SceneCommand> command_queue_;
   std::unordered_map<shared::EntityId, entt::entity, EntityIdHash>
       entity_index_;
+  std::vector<shared::MoveCorrection> recent_move_corrections_;
 };
 
 }  // namespace server

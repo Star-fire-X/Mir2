@@ -2,7 +2,12 @@
 
 #include <cstdint>
 #include <functional>
+#include <iterator>
 #include <utility>
+#include <vector>
+
+#include "server/ecs/components.h"
+#include "server/scene/movement_system.h"
 
 namespace server {
 
@@ -24,6 +29,31 @@ std::optional<SceneCommand> Scene::Dequeue() {
   return command;
 }
 
+void Scene::Tick(const MovementSystem* movement_system, float delta_seconds) {
+  recent_move_corrections_.clear();
+  if (movement_system == nullptr) {
+    return;
+  }
+
+  while (HasPendingCommands()) {
+    const std::optional<SceneCommand> command = Dequeue();
+    if (!command.has_value()) {
+      break;
+    }
+
+    if (command->type != SceneCommandType::kMove) {
+      continue;
+    }
+
+    std::optional<shared::MoveCorrection> correction;
+    const bool accepted = movement_system->ApplyMove(
+        this, command->move_request, delta_seconds, &correction);
+    if (!accepted && correction.has_value()) {
+      recent_move_corrections_.push_back(*correction);
+    }
+  }
+}
+
 bool Scene::RegisterEntity(shared::EntityId entity_id, entt::entity entity) {
   const auto [_, inserted] = entity_index_.emplace(entity_id, entity);
   return inserted;
@@ -42,6 +72,62 @@ std::optional<entt::entity> Scene::Find(shared::EntityId entity_id) const {
 }
 
 std::size_t Scene::EntityCount() const { return entity_index_.size(); }
+
+std::vector<shared::EntityId> Scene::EntityIds() const {
+  std::vector<shared::EntityId> entity_ids;
+  entity_ids.reserve(entity_index_.size());
+  for (const auto& [entity_id, _] : entity_index_) {
+    entity_ids.push_back(entity_id);
+  }
+  return entity_ids;
+}
+
+std::optional<shared::ScenePosition> Scene::GetPosition(
+    shared::EntityId entity_id) const {
+  const std::optional<entt::entity> entity = Find(entity_id);
+  if (!entity.has_value()) {
+    return std::nullopt;
+  }
+
+  if (!registry_.all_of<ecs::PositionComponent>(*entity)) {
+    return std::nullopt;
+  }
+
+  return registry_.get<ecs::PositionComponent>(*entity).position;
+}
+
+std::optional<shared::VisibleEntitySnapshot> Scene::BuildVisibleSnapshot(
+    shared::EntityId entity_id) const {
+  const std::optional<entt::entity> entity = Find(entity_id);
+  if (!entity.has_value()) {
+    return std::nullopt;
+  }
+
+  if (!registry_.all_of<ecs::PositionComponent>(*entity)) {
+    return std::nullopt;
+  }
+
+  shared::VisibleEntityKind kind = shared::VisibleEntityKind::kUnknown;
+  if (registry_.all_of<ecs::PlayerRefComponent>(*entity)) {
+    kind = shared::VisibleEntityKind::kPlayer;
+  } else if (registry_.all_of<ecs::MonsterRefComponent>(*entity)) {
+    kind = shared::VisibleEntityKind::kMonster;
+  }
+
+  return shared::VisibleEntitySnapshot{
+      entity_id,
+      kind,
+      registry_.get<ecs::PositionComponent>(*entity).position,
+  };
+}
+
+using MoveCorrectionList = std::vector<shared::MoveCorrection>;
+
+const MoveCorrectionList& Scene::recent_move_corrections() const {
+  return recent_move_corrections_;
+}
+
+void Scene::ClearRecentMoveCorrections() { recent_move_corrections_.clear(); }
 
 entt::registry& Scene::registry() { return registry_; }
 

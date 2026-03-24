@@ -7,7 +7,9 @@ set_project_warnings(server_data)
 
 add_library(server_scene STATIC
   scene/scene.cc
-  entity/entity_factory.cc)
+  scene/movement_system.cc
+  entity/entity_factory.cc
+  aoi/aoi_system.cc)
 
 target_include_directories(server_scene PUBLIC ${PROJECT_SOURCE_DIR})
 target_link_libraries(server_scene PUBLIC EnTT::EnTT server_data)
@@ -19,6 +21,15 @@ if(ENTT_INCLUDE_DIRS)
   target_include_directories(server_scene SYSTEM PUBLIC ${ENTT_INCLUDE_DIRS})
 endif()
 set_project_warnings(server_scene)
+
+add_library(server_runtime STATIC
+  net/session.cc
+  player/player.cc
+  protocol/protocol_dispatcher.cc)
+
+target_include_directories(server_runtime PUBLIC ${PROJECT_SOURCE_DIR})
+target_link_libraries(server_runtime PUBLIC server_scene server_db)
+set_project_warnings(server_runtime)
 
 add_library(server_db STATIC
   db/player_repository.cc
@@ -117,6 +128,57 @@ if(BUILD_TESTING)
             GTest::gtest_main)
   set_project_warnings(scene_spawn_test)
 
+  add_executable(
+    player_login_flow_test
+    tests/player/player_login_flow_test.cc)
+  target_include_directories(player_login_flow_test PRIVATE ${PROJECT_SOURCE_DIR})
+  target_link_libraries(
+    player_login_flow_test
+    PRIVATE server_runtime
+            GTest::gtest_main)
+  set_project_warnings(player_login_flow_test)
+
+  add_executable(
+    aoi_enter_leave_test
+    tests/aoi/aoi_enter_leave_test.cc)
+  target_include_directories(aoi_enter_leave_test PRIVATE ${PROJECT_SOURCE_DIR})
+  target_link_libraries(
+    aoi_enter_leave_test
+    PRIVATE server_runtime
+            GTest::gtest_main)
+  set_project_warnings(aoi_enter_leave_test)
+
+  add_executable(
+    enter_scene_snapshot_test
+    tests/scene/enter_scene_snapshot_test.cc)
+  target_include_directories(
+    enter_scene_snapshot_test PRIVATE ${PROJECT_SOURCE_DIR})
+  target_link_libraries(
+    enter_scene_snapshot_test
+    PRIVATE server_runtime
+            GTest::gtest_main)
+  set_project_warnings(enter_scene_snapshot_test)
+
+  add_executable(
+    movement_system_test
+    tests/scene/movement_system_test.cc)
+  target_include_directories(movement_system_test PRIVATE ${PROJECT_SOURCE_DIR})
+  target_link_libraries(
+    movement_system_test
+    PRIVATE server_runtime
+            GTest::gtest_main)
+  set_project_warnings(movement_system_test)
+
+  add_executable(
+    move_correction_test
+    tests/scene/move_correction_test.cc)
+  target_include_directories(move_correction_test PRIVATE ${PROJECT_SOURCE_DIR})
+  target_link_libraries(
+    move_correction_test
+    PRIVATE server_runtime
+            GTest::gtest_main)
+  set_project_warnings(move_correction_test)
+
   include(GoogleTest)
   gtest_discover_tests(inventory_test)
   gtest_discover_tests(player_repository_test)
@@ -126,4 +188,9 @@ if(BUILD_TESTING)
   gtest_discover_tests(server_bootstrap_test)
   gtest_discover_tests(shared_contract_test)
   gtest_discover_tests(scene_spawn_test)
+  gtest_discover_tests(player_login_flow_test)
+  gtest_discover_tests(aoi_enter_leave_test)
+  gtest_discover_tests(enter_scene_snapshot_test)
+  gtest_discover_tests(movement_system_test)
+  gtest_discover_tests(move_correction_test)
 endif()
