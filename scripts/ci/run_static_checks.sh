@@ -10,6 +10,21 @@ GOOGLETEST_SOURCE_DIR="${GOOGLETEST_SOURCE_DIR:-}"
 # Support tools installed with: python3 -m pip install --user <tool>
 export PATH="$HOME/.local/bin:$PATH"
 
+collect_cpp_files() {
+  (
+    cd "${ROOT_DIR}"
+    find . -type f \
+      \( -name "*.h" -o -name "*.hpp" -o -name "*.hh" -o -name "*.cc" -o -name "*.cpp" -o -name "*.cxx" \) \
+      -not -path "./.git/*" \
+      -not -path "./.worktrees/*" \
+      -not -path "./build/*" \
+      -not -path "./build-*/*" \
+      -not -path "./third_party/*" | sort
+  ) | while IFS= read -r relative_path; do
+    printf '%s/%s\n' "${ROOT_DIR}" "${relative_path#./}"
+  done
+}
+
 CMAKE_ARGS=()
 if [[ -n "${GOOGLETEST_SOURCE_DIR}" ]]; then
   CMAKE_ARGS+=("-DFETCHCONTENT_SOURCE_DIR_GOOGLETEST=${GOOGLETEST_SOURCE_DIR}")
@@ -20,17 +35,7 @@ if [[ ! -f "${ROOT_DIR}/CMakeLists.txt" ]]; then
   exit 0
 fi
 
-# Exclude nested worktrees under this checkout without dropping a
-# checkout whose own root path happens to live under `/.worktrees/`.
-mapfile -t CPP_FILES < <(
-  find "${ROOT_DIR}" -type f \
-    \( -name "*.h" -o -name "*.hpp" -o -name "*.hh" -o -name "*.cc" -o -name "*.cpp" -o -name "*.cxx" \) \
-    -not -path "*/.git/*" \
-    -not -path "${ROOT_DIR}/.worktrees/*" \
-    -not -path "*/build/*" \
-    -not -path "*/build-*/*" \
-    -not -path "*/third_party/*" | sort
-)
+mapfile -t CPP_FILES < <(collect_cpp_files)
 
 if [[ "${#CPP_FILES[@]}" -eq 0 ]]; then
   echo "::notice::No C++ files found. Skipping static checks."
