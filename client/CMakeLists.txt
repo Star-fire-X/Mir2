@@ -1,5 +1,7 @@
 add_library(client_runtime STATIC
   app/game_app.cc
+  controller/player_controller.cc
+  controller/skill_controller.cc
   net/network_manager.cc
   protocol/protocol_dispatcher.cc)
 
@@ -27,7 +29,37 @@ if(BUILD_TESTING)
   target_link_libraries(dispatcher_test PRIVATE client_runtime GTest::gtest_main)
   set_project_warnings(dispatcher_test)
 
+  add_executable(
+    entity_mapping_test
+    tests/scene/entity_mapping_test.cc)
+
+  target_include_directories(entity_mapping_test PRIVATE ${PROJECT_SOURCE_DIR})
+  target_link_libraries(entity_mapping_test PRIVATE client_runtime GTest::gtest_main)
+  set_project_warnings(entity_mapping_test)
+
+  add_executable(
+    inventory_model_test
+    tests/model/inventory_model_test.cc)
+
+  target_include_directories(inventory_model_test PRIVATE ${PROJECT_SOURCE_DIR})
+  target_link_libraries(inventory_model_test PRIVATE client_runtime GTest::gtest_main)
+  set_project_warnings(inventory_model_test)
+
+  add_executable(
+    player_controller_test
+    tests/controller/player_controller_test.cc)
+
+  target_include_directories(player_controller_test PRIVATE ${PROJECT_SOURCE_DIR})
+  target_link_libraries(
+    player_controller_test
+    PRIVATE client_runtime
+            GTest::gtest_main)
+  set_project_warnings(player_controller_test)
+
   include(GoogleTest)
   gtest_discover_tests(network_queue_test)
   gtest_discover_tests(dispatcher_test)
+  gtest_discover_tests(entity_mapping_test)
+  gtest_discover_tests(inventory_model_test)
+  gtest_discover_tests(player_controller_test)
 endif()
