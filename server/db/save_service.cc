@@ -44,6 +44,36 @@ void SaveService::NotifySaveFailure(std::uint64_t version) {
   retry_ = true;
 }
 
+bool SaveService::ShouldMarkDirty(SaveTrigger trigger) const {
+  switch (trigger) {
+    case SaveTrigger::kTimer:
+      return false;
+    case SaveTrigger::kInventoryChange:
+    case SaveTrigger::kResourceChange:
+    case SaveTrigger::kLogout:
+    case SaveTrigger::kDisconnect:
+      return true;
+  }
+
+  return false;
+}
+
+bool SaveService::ShouldQueueSnapshot(SaveTrigger trigger,
+                                      bool player_dirty) const {
+  switch (trigger) {
+    case SaveTrigger::kInventoryChange:
+    case SaveTrigger::kResourceChange:
+      return false;
+    case SaveTrigger::kTimer:
+      return player_dirty && !HasQueuedSnapshot();
+    case SaveTrigger::kLogout:
+    case SaveTrigger::kDisconnect:
+      return true;
+  }
+
+  return false;
+}
+
 bool SaveService::IsDirty() const { return dirty_; }
 
 bool SaveService::NeedsRetry() const { return retry_; }

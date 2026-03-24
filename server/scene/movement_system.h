@@ -22,6 +22,8 @@ class MovementSystem {
                           float correction_threshold = 0.1F);
 
   void AddBlockedRect(BlockedRect blocked_rect);
+  [[nodiscard]] float max_speed_units_per_second() const;
+  [[nodiscard]] float correction_threshold() const;
 
   bool ApplyMove(Scene* scene, const shared::MoveRequest& move_request,
                  float delta_seconds,

@@ -144,6 +144,27 @@ if(BUILD_TESTING)
   set_project_warnings(player_login_flow_test)
 
   add_executable(
+    logout_save_test
+    tests/player/logout_save_test.cc)
+  target_include_directories(logout_save_test PRIVATE ${PROJECT_SOURCE_DIR})
+  target_link_libraries(
+    logout_save_test
+    PRIVATE server_runtime
+            GTest::gtest_main)
+  set_project_warnings(logout_save_test)
+
+  add_executable(
+    reconnect_snapshot_test
+    tests/player/reconnect_snapshot_test.cc)
+  target_include_directories(
+    reconnect_snapshot_test PRIVATE ${PROJECT_SOURCE_DIR})
+  target_link_libraries(
+    reconnect_snapshot_test
+    PRIVATE server_runtime
+            GTest::gtest_main)
+  set_project_warnings(reconnect_snapshot_test)
+
+  add_executable(
     aoi_enter_leave_test
     tests/aoi/aoi_enter_leave_test.cc)
   target_include_directories(aoi_enter_leave_test PRIVATE ${PROJECT_SOURCE_DIR})
@@ -246,6 +267,8 @@ if(BUILD_TESTING)
   gtest_discover_tests(shared_contract_test)
   gtest_discover_tests(scene_spawn_test)
   gtest_discover_tests(player_login_flow_test)
+  gtest_discover_tests(logout_save_test)
+  gtest_discover_tests(reconnect_snapshot_test)
   gtest_discover_tests(aoi_enter_leave_test)
   gtest_discover_tests(enter_scene_snapshot_test)
   gtest_discover_tests(movement_system_test)
