@@ -100,5 +100,27 @@ TEST(SaveServiceTest, RequeueIgnoresOlderFailureCallback) {
   EXPECT_FALSE(save_service.NeedsRetry());
 }
 
+TEST(SaveServiceTest,
+     InventoryAndResourceTriggersMarkDirtyWithoutImmediateQueue) {
+  SaveService save_service;
+
+  EXPECT_TRUE(save_service.ShouldMarkDirty(SaveTrigger::kInventoryChange));
+  EXPECT_TRUE(save_service.ShouldMarkDirty(SaveTrigger::kResourceChange));
+  EXPECT_FALSE(
+      save_service.ShouldQueueSnapshot(SaveTrigger::kInventoryChange, false));
+  EXPECT_FALSE(
+      save_service.ShouldQueueSnapshot(SaveTrigger::kResourceChange, true));
+}
+
+TEST(SaveServiceTest, TimerAndLifecycleTriggersQueueWithExpectedSemantics) {
+  SaveService save_service;
+
+  EXPECT_FALSE(save_service.ShouldQueueSnapshot(SaveTrigger::kTimer, false));
+  EXPECT_TRUE(save_service.ShouldQueueSnapshot(SaveTrigger::kTimer, true));
+  EXPECT_TRUE(save_service.ShouldQueueSnapshot(SaveTrigger::kLogout, false));
+  EXPECT_TRUE(save_service.ShouldQueueSnapshot(SaveTrigger::kDisconnect,
+                                               false));
+}
+
 }  // namespace
 }  // namespace server

@@ -21,20 +21,26 @@ class Player {
 
   [[nodiscard]] Session* session() const;
   [[nodiscard]] bool dirty() const;
+  [[nodiscard]] bool operations_frozen() const;
   [[nodiscard]] const std::optional<shared::EntityId>& controlled_entity_id()
       const;
   [[nodiscard]] std::uint32_t current_scene_id() const;
 
   void BindSession(Session* session);
   void SetControlledEntity(shared::EntityId entity_id, std::uint32_t scene_id);
+  void ClearControlledEntity();
+  bool CaptureSceneSnapshot(const Scene* scene);
   void SubmitMove(Scene* scene, const shared::MoveRequest& move_request);
   void MarkDirty();
   void ClearDirty();
+  void FreezeOperations();
+  void ResumeOperations();
 
  private:
   CharacterData data_{};
   Session* session_ = nullptr;
   bool dirty_ = false;
+  bool operations_frozen_ = false;
   std::optional<shared::EntityId> controlled_entity_id_;
   std::uint32_t current_scene_id_ = 0;
 };
