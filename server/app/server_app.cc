@@ -1,6 +1,8 @@
 #include "server/app/server_app.h"
 
+#include <algorithm>
 #include <cmath>
+#include <iterator>
 #include <optional>
 #include <utility>
 
@@ -258,7 +260,8 @@ void ServerApp::PrimeControlledEntityRuntime(Player* player) {
   }
 }
 
-ServerApp::PlayerAndScene ServerApp::FindBoundPlayerAndScene(Session* session) {
+ServerApp::PlayerAndScene ServerApp::FindBoundPlayerAndScene(
+    const Session* session) {
   if (session == nullptr || !session->player_id().has_value()) {
     return {};
   }
@@ -273,7 +276,7 @@ ServerApp::PlayerAndScene ServerApp::FindBoundPlayerAndScene(Session* session) {
 }
 
 std::vector<ServerApp::OutboundEvent> ServerApp::FlushMoveEvents(
-    Player* player, Scene* scene,
+    const Player* player, Scene* scene,
     const std::optional<shared::ScenePosition>& previous_position) {
   if (player == nullptr || scene == nullptr ||
       !player->controlled_entity_id().has_value()) {
@@ -283,10 +286,12 @@ std::vector<ServerApp::OutboundEvent> ServerApp::FlushMoveEvents(
   std::vector<OutboundEvent> events;
   const auto& corrections = scene->recent_move_corrections();
   if (!corrections.empty()) {
-    for (const shared::MoveCorrection& correction : corrections) {
-      events.push_back(SelfStateEvent{correction.entity_id,
-                                      correction.authoritative_position});
-    }
+    std::transform(
+        corrections.begin(), corrections.end(), std::back_inserter(events),
+        [](const shared::MoveCorrection& correction) {
+          return OutboundEvent{SelfStateEvent{correction.entity_id,
+                                              correction.authoritative_position}};
+        });
     scene->ClearRecentMoveCorrections();
     return events;
   }
@@ -302,12 +307,15 @@ std::vector<ServerApp::OutboundEvent> ServerApp::FlushMoveEvents(
     const AoiDiff diff =
         aoi_system.ComputeEnterLeave(*player->controlled_entity_id(),
                                      *previous_position, *position, *scene);
-    for (shared::EntityId entity_id : diff.left) {
-      events.push_back(AoiLeaveEvent{entity_id});
-    }
-    for (const shared::VisibleEntitySnapshot& entity : diff.entered) {
-      events.push_back(AoiEnterEvent{entity});
-    }
+    std::transform(diff.left.begin(), diff.left.end(), std::back_inserter(events),
+                   [](shared::EntityId entity_id) {
+                     return OutboundEvent{AoiLeaveEvent{entity_id}};
+                   });
+    std::transform(
+        diff.entered.begin(), diff.entered.end(), std::back_inserter(events),
+        [](const shared::VisibleEntitySnapshot& entity) {
+          return OutboundEvent{AoiEnterEvent{entity}};
+        });
   }
   return events;
 }

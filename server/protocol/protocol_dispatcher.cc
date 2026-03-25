@@ -45,7 +45,7 @@ shared::LoginResponse ProtocolDispatcher::HandleLogin(
 }
 
 bool ProtocolDispatcher::CanEnterScene(
-    Session* session,
+    const Session* session,
     const shared::EnterSceneRequest& enter_scene_request) const {
   return FindEnterScenePlayer(session, enter_scene_request) != nullptr;
 }
@@ -146,7 +146,7 @@ std::optional<shared::EnterSceneSnapshot> ProtocolDispatcher::HandleReconnect(
 }
 
 Player* ProtocolDispatcher::FindEnterScenePlayer(
-    Session* session,
+    const Session* session,
     const shared::EnterSceneRequest& enter_scene_request) const {
   if (session == nullptr || !session->player_id().has_value()) {
     return nullptr;

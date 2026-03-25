@@ -40,10 +40,12 @@ GameConfig MakeAoiBoundaryConfig() {
 
 std::optional<shared::EnterSceneSnapshot> FindSnapshot(
     const std::vector<ServerApp::OutboundEvent>& events) {
-  for (const ServerApp::OutboundEvent& event : events) {
-    if (std::holds_alternative<shared::EnterSceneSnapshot>(event)) {
-      return std::get<shared::EnterSceneSnapshot>(event);
-    }
+  const auto it = std::find_if(
+      events.begin(), events.end(), [](const ServerApp::OutboundEvent& event) {
+        return std::holds_alternative<shared::EnterSceneSnapshot>(event);
+      });
+  if (it != events.end()) {
+    return std::get<shared::EnterSceneSnapshot>(*it);
   }
   return std::nullopt;
 }
@@ -51,25 +53,27 @@ std::optional<shared::EnterSceneSnapshot> FindSnapshot(
 std::optional<shared::VisibleEntitySnapshot> FindAoiEnter(
     const std::vector<ServerApp::OutboundEvent>& events,
     shared::VisibleEntityKind kind) {
-  for (const ServerApp::OutboundEvent& event : events) {
-    if (!std::holds_alternative<ServerApp::AoiEnterEvent>(event)) {
-      continue;
-    }
-    const ServerApp::AoiEnterEvent& aoi_enter =
-        std::get<ServerApp::AoiEnterEvent>(event);
-    if (aoi_enter.entity.kind == kind) {
-      return aoi_enter.entity;
-    }
+  const auto it = std::find_if(events.begin(), events.end(),
+                               [kind](const ServerApp::OutboundEvent& event) {
+                                 return std::holds_alternative<
+                                            ServerApp::AoiEnterEvent>(event) &&
+                                        std::get<ServerApp::AoiEnterEvent>(event)
+                                                .entity.kind == kind;
+                               });
+  if (it != events.end()) {
+    return std::get<ServerApp::AoiEnterEvent>(*it).entity;
   }
   return std::nullopt;
 }
 
 std::optional<shared::InventoryDelta> FindInventoryDelta(
     const std::vector<ServerApp::OutboundEvent>& events) {
-  for (const ServerApp::OutboundEvent& event : events) {
-    if (std::holds_alternative<shared::InventoryDelta>(event)) {
-      return std::get<shared::InventoryDelta>(event);
-    }
+  const auto it = std::find_if(
+      events.begin(), events.end(), [](const ServerApp::OutboundEvent& event) {
+        return std::holds_alternative<shared::InventoryDelta>(event);
+      });
+  if (it != events.end()) {
+    return std::get<shared::InventoryDelta>(*it);
   }
   return std::nullopt;
 }
