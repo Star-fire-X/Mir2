@@ -49,13 +49,13 @@ class ServerApp {
   std::vector<OutboundEvent> EnterScene(
       Session* session, const shared::EnterSceneRequest& enter_scene_request);
   std::vector<OutboundEvent> HandleMove(
-      Session* session, const shared::MoveRequest& move_request,
+      const Session* session, const shared::MoveRequest& move_request,
       float delta_seconds);
   std::vector<OutboundEvent> HandleCastSkill(
       Session* session, const shared::CastSkillRequest& cast_skill_request,
       float now_seconds);
   std::vector<OutboundEvent> HandlePickup(
-      Session* session, const shared::PickupRequest& pickup_request);
+      const Session* session, const shared::PickupRequest& pickup_request);
 
  private:
   struct MonsterRuntimeTemplate {
