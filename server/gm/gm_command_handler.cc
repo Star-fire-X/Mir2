@@ -2,6 +2,8 @@
 
 #include <optional>
 #include <sstream>
+#include <string>
+#include <vector>
 
 #include "server/ecs/components.h"
 #include "server/entity/entity_factory.h"

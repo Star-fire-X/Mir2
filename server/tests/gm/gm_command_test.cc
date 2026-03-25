@@ -1,3 +1,6 @@
+#include <string>
+#include <vector>
+
 #include "gtest/gtest.h"
 #include "server/data/character_data.h"
 #include "server/db/save_service.h"

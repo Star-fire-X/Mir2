@@ -1,6 +1,8 @@
 #include "server/core/log/logger.h"
 
+#include <string>
 #include <utility>
+#include <vector>
 
 namespace server {
 
