@@ -53,13 +53,12 @@ std::optional<shared::EnterSceneSnapshot> FindSnapshot(
 std::optional<shared::VisibleEntitySnapshot> FindAoiEnter(
     const std::vector<ServerApp::OutboundEvent>& events,
     shared::VisibleEntityKind kind) {
-  const auto it = std::find_if(events.begin(), events.end(),
-                               [kind](const ServerApp::OutboundEvent& event) {
-                                 return std::holds_alternative<
-                                            ServerApp::AoiEnterEvent>(event) &&
-                                        std::get<ServerApp::AoiEnterEvent>(event)
-                                                .entity.kind == kind;
-                               });
+  const auto it = std::find_if(
+      events.begin(), events.end(),
+      [kind](const ServerApp::OutboundEvent& event) {
+        return std::holds_alternative<ServerApp::AoiEnterEvent>(event) &&
+               std::get<ServerApp::AoiEnterEvent>(event).entity.kind == kind;
+      });
   if (it != events.end()) {
     return std::get<ServerApp::AoiEnterEvent>(*it).entity;
   }
@@ -103,7 +102,8 @@ void EnqueueClientMessages(
                                               ServerApp::AoiLeaveEvent>) {
             game_app->network_manager().Enqueue(client::protocol::ClientMessage{
                 client::protocol::AoiLeaveMessage{payload.entity_id}});
-          } else if constexpr (std::is_same_v<Payload, shared::InventoryDelta>) {
+          } else if constexpr (std::is_same_v<Payload,
+                                              shared::InventoryDelta>) {
             game_app->network_manager().Enqueue(client::protocol::ClientMessage{
                 client::protocol::InventoryDeltaMessage{payload}});
           }
@@ -126,8 +126,9 @@ TEST(ClosedLoopIntegrationTest, LoginEnterMoveCombatAndPickupStayInSync) {
       server_app.Login(&session, shared::LoginRequest{"hero", "pw"});
   ASSERT_EQ(login.error_code, shared::ErrorCode::kOk);
 
-  const std::vector<ServerApp::OutboundEvent> enter_events = server_app.EnterScene(
-      &session, shared::EnterSceneRequest{login.player_id, 1});
+  const std::vector<ServerApp::OutboundEvent> enter_events =
+      server_app.EnterScene(&session,
+                            shared::EnterSceneRequest{login.player_id, 1});
   const std::optional<shared::EnterSceneSnapshot> enter_snapshot =
       FindSnapshot(enter_events);
   ASSERT_TRUE(enter_snapshot.has_value());
@@ -153,15 +154,15 @@ TEST(ClosedLoopIntegrationTest, LoginEnterMoveCombatAndPickupStayInSync) {
                    });
   ASSERT_NE(monster_it, enter_snapshot->visible_entities.end());
 
-  const std::vector<ServerApp::OutboundEvent> move_events = server_app.HandleMove(
-      &session,
-      shared::MoveRequest{
-          enter_snapshot->controlled_entity_id,
-          shared::ScenePosition{6.0F, 4.0F},
-          1,
-          1000,
-      },
-      1.0F);
+  const std::vector<ServerApp::OutboundEvent> move_events =
+      server_app.HandleMove(&session,
+                            shared::MoveRequest{
+                                enter_snapshot->controlled_entity_id,
+                                shared::ScenePosition{6.0F, 4.0F},
+                                1,
+                                1000,
+                            },
+                            1.0F);
   EnqueueClientMessages(&game_app, move_events);
   game_app.RunFrame();
 
@@ -169,15 +170,14 @@ TEST(ClosedLoopIntegrationTest, LoginEnterMoveCombatAndPickupStayInSync) {
   EXPECT_FLOAT_EQ(game_app.model_root().player_model().position().y, 4.0F);
 
   const std::vector<ServerApp::OutboundEvent> combat_events =
-      server_app.HandleCastSkill(
-          &session,
-          shared::CastSkillRequest{
-              enter_snapshot->controlled_entity_id,
-              monster_it->entity_id,
-              1001,
-              2,
-          },
-          1.0F);
+      server_app.HandleCastSkill(&session,
+                                 shared::CastSkillRequest{
+                                     enter_snapshot->controlled_entity_id,
+                                     monster_it->entity_id,
+                                     1001,
+                                     2,
+                                 },
+                                 1.0F);
   const std::optional<shared::VisibleEntitySnapshot> drop_snapshot =
       FindAoiEnter(combat_events, shared::VisibleEntityKind::kDrop);
   ASSERT_TRUE(drop_snapshot.has_value());
@@ -189,12 +189,11 @@ TEST(ClosedLoopIntegrationTest, LoginEnterMoveCombatAndPickupStayInSync) {
   ASSERT_NE(client_scene->FindView(drop_snapshot->entity_id), nullptr);
 
   const std::vector<ServerApp::OutboundEvent> pickup_events =
-      server_app.HandlePickup(&session,
-                              shared::PickupRequest{
-                                  login.player_id,
-                                  drop_snapshot->entity_id,
-                                  3,
-                              });
+      server_app.HandlePickup(&session, shared::PickupRequest{
+                                            login.player_id,
+                                            drop_snapshot->entity_id,
+                                            3,
+                                        });
   const std::optional<shared::InventoryDelta> inventory_delta =
       FindInventoryDelta(pickup_events);
   ASSERT_TRUE(inventory_delta.has_value());
@@ -203,13 +202,16 @@ TEST(ClosedLoopIntegrationTest, LoginEnterMoveCombatAndPickupStayInSync) {
   game_app.RunFrame();
 
   EXPECT_EQ(client_scene->FindView(drop_snapshot->entity_id), nullptr);
-  ASSERT_FALSE(game_app.ui_manager().inventory_panel().rendered_slots().empty());
-  EXPECT_EQ(game_app.ui_manager().inventory_panel().rendered_slots()[0]
+  ASSERT_FALSE(
+      game_app.ui_manager().inventory_panel().rendered_slots().empty());
+  EXPECT_EQ(game_app.ui_manager()
+                .inventory_panel()
+                .rendered_slots()[0]
                 .item_template_id,
             5001U);
-  EXPECT_EQ(game_app.ui_manager().inventory_panel().rendered_slots()[0]
-                .item_count,
-            1U);
+  EXPECT_EQ(
+      game_app.ui_manager().inventory_panel().rendered_slots()[0].item_count,
+      1U);
   EXPECT_EQ(game_app.dev_panel().snapshot().scene_id, 1U);
   EXPECT_EQ(game_app.dev_panel().snapshot().entity_count, 1U);
   EXPECT_EQ(game_app.dev_panel().snapshot().recent_protocol_summaries.back(),
@@ -230,8 +232,9 @@ TEST(ClosedLoopIntegrationTest, MoveEnteringAoiKeepsClientSceneInSync) {
       server_app.Login(&session, shared::LoginRequest{"hero", "pw"});
   ASSERT_EQ(login.error_code, shared::ErrorCode::kOk);
 
-  const std::vector<ServerApp::OutboundEvent> enter_events = server_app.EnterScene(
-      &session, shared::EnterSceneRequest{login.player_id, 1});
+  const std::vector<ServerApp::OutboundEvent> enter_events =
+      server_app.EnterScene(&session,
+                            shared::EnterSceneRequest{login.player_id, 1});
   const std::optional<shared::EnterSceneSnapshot> enter_snapshot =
       FindSnapshot(enter_events);
   ASSERT_TRUE(enter_snapshot.has_value());
@@ -245,15 +248,15 @@ TEST(ClosedLoopIntegrationTest, MoveEnteringAoiKeepsClientSceneInSync) {
   ASSERT_NE(client_scene, nullptr);
   EXPECT_EQ(client_scene->ViewCount(), 2U);
 
-  const std::vector<ServerApp::OutboundEvent> move_events = server_app.HandleMove(
-      &session,
-      shared::MoveRequest{
-          enter_snapshot->controlled_entity_id,
-          shared::ScenePosition{6.0F, 4.0F},
-          1,
-          1000,
-      },
-      1.0F);
+  const std::vector<ServerApp::OutboundEvent> move_events =
+      server_app.HandleMove(&session,
+                            shared::MoveRequest{
+                                enter_snapshot->controlled_entity_id,
+                                shared::ScenePosition{6.0F, 4.0F},
+                                1,
+                                1000,
+                            },
+                            1.0F);
 
   ASSERT_TRUE(std::any_of(
       move_events.begin(), move_events.end(),
