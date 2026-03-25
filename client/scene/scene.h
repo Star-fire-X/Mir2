@@ -6,6 +6,7 @@
 #include <functional>
 #include <memory>
 #include <unordered_map>
+#include <vector>
 
 #include "client/protocol/client_message.h"
 #include "client/view/drop_view.h"
@@ -26,9 +27,9 @@ class Scene {
   void LeaveAoi(shared::EntityId entity_id) { views_.erase(entity_id); }
 
   void ApplySelfState(const protocol::SelfStateMessage& self_state) {
-    EntityView* view = FindView(self_state.entity_id);
+    EntityView* view = FindView(self_state.state.entity_id);
     if (view != nullptr) {
-      view->ApplyDelta(self_state.position);
+      view->ApplyDelta(self_state.state.position);
     }
   }
 
@@ -49,6 +50,24 @@ class Scene {
   }
 
   [[nodiscard]] std::size_t ViewCount() const { return views_.size(); }
+
+  [[nodiscard]] std::vector<EntityView*> ViewList() {
+    std::vector<EntityView*> view_list;
+    view_list.reserve(views_.size());
+    for (auto& [_, view] : views_) {
+      view_list.push_back(view.get());
+    }
+    return view_list;
+  }
+
+  [[nodiscard]] std::vector<const EntityView*> ViewList() const {
+    std::vector<const EntityView*> view_list;
+    view_list.reserve(views_.size());
+    for (const auto& [_, view] : views_) {
+      view_list.push_back(view.get());
+    }
+    return view_list;
+  }
 
  private:
   struct EntityIdHash {

@@ -2,6 +2,6 @@
 
 int main() {
   client::GameApp app;
-  app.RunFrame();
+  app.Run();
   return 0;
 }

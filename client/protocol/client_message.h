@@ -3,39 +3,62 @@
 
 #include <variant>
 
+#include "shared/protocol/auth_messages.h"
+#include "shared/protocol/combat_messages.h"
+#include "shared/protocol/runtime_messages.h"
 #include "shared/protocol/scene_messages.h"
 
 namespace client {
 namespace protocol {
+
+struct LoginResponseMessage {
+  shared::LoginResponse response;
+};
+
+struct SceneChannelBootstrapMessage {
+  shared::SceneChannelBootstrap bootstrap;
+};
 
 struct EnterSceneSnapshotMessage {
   shared::EnterSceneSnapshot snapshot;
 };
 
 struct SelfStateMessage {
-  shared::EntityId entity_id;
-  shared::ScenePosition position;
+  shared::SelfState state;
 };
 
 struct AoiEnterMessage {
-  shared::VisibleEntitySnapshot entity;
+  shared::AoiEnter event;
 };
 
 struct AoiLeaveMessage {
-  shared::EntityId entity_id;
+  shared::AoiLeave event;
 };
 
 struct InventoryDeltaMessage {
   shared::InventoryDelta delta;
 };
 
-using EnterScene = EnterSceneSnapshotMessage;
-using SelfState = SelfStateMessage;
-using AoiIn = AoiEnterMessage;
-using AoiOut = AoiLeaveMessage;
-using Delta = InventoryDeltaMessage;
+struct CastSkillResultMessage {
+  shared::CastSkillResult result;
+};
 
-using ClientMessage = std::variant<EnterScene, SelfState, AoiIn, AoiOut, Delta>;
+struct PickupResultMessage {
+  shared::PickupResult result;
+};
+
+using InboundMessage =
+    std::variant<LoginResponseMessage, SceneChannelBootstrapMessage,
+                 EnterSceneSnapshotMessage, SelfStateMessage, AoiEnterMessage,
+                 AoiLeaveMessage, InventoryDeltaMessage, CastSkillResultMessage,
+                 PickupResultMessage>;
+
+using OutboundMessage =
+    std::variant<shared::LoginRequest, shared::EnterSceneRequest,
+                 shared::MoveRequest, shared::CastSkillRequest,
+                 shared::PickupRequest>;
+
+using ClientMessage = InboundMessage;
 
 }  // namespace protocol
 }  // namespace client

@@ -105,17 +105,31 @@ std::vector<ServerApp::OutboundEvent> ServerApp::HandleMove(
 std::vector<ServerApp::OutboundEvent> ServerApp::HandleCastSkill(
     Session* session, const shared::CastSkillRequest& cast_skill_request,
     float now_seconds) {
+  return ResolveCastSkill(session, cast_skill_request, now_seconds).events;
+}
+
+ServerApp::CastSkillOutcome ServerApp::ResolveCastSkill(
+    Session* session, const shared::CastSkillRequest& cast_skill_request,
+    float now_seconds) {
+  CastSkillOutcome outcome;
+  outcome.result.caster_entity_id = cast_skill_request.caster_entity_id;
+  outcome.result.target_entity_id = cast_skill_request.target_entity_id;
+  outcome.result.skill_id = cast_skill_request.skill_id;
+  outcome.result.client_seq = cast_skill_request.client_seq;
+  outcome.result.error_code = shared::ErrorCode::kInvalidSkillTarget;
+  outcome.result.hp_delta = 0;
+
   const PlayerAndScene player_and_scene = FindBoundPlayerAndScene(session);
   if (player_and_scene.player == nullptr || player_and_scene.scene == nullptr ||
       !player_and_scene.player->controlled_entity_id().has_value()) {
-    return {};
+    return outcome;
   }
 
   Scene& scene = *player_and_scene.scene;
   const shared::EntityId caster_entity_id =
       *player_and_scene.player->controlled_entity_id();
   if (caster_entity_id != cast_skill_request.caster_entity_id) {
-    return {};
+    return outcome;
   }
 
   const std::optional<entt::entity> caster_entity =
@@ -123,14 +137,14 @@ std::vector<ServerApp::OutboundEvent> ServerApp::HandleCastSkill(
   const std::optional<entt::entity> target_entity =
       scene.Find(cast_skill_request.target_entity_id);
   if (!caster_entity.has_value() || !target_entity.has_value()) {
-    return {};
+    return outcome;
   }
 
   auto& registry = scene.registry();
   if (!registry.all_of<ecs::SkillRuntimeComponent>(*caster_entity) ||
       !registry.all_of<ecs::CombatStateComponent>(*target_entity) ||
       !registry.all_of<ecs::MonsterRefComponent>(*target_entity)) {
-    return {};
+    return outcome;
   }
 
   const std::optional<shared::ScenePosition> caster_position =
@@ -138,7 +152,7 @@ std::vector<ServerApp::OutboundEvent> ServerApp::HandleCastSkill(
   const std::optional<shared::ScenePosition> target_position =
       scene.GetPosition(cast_skill_request.target_entity_id);
   if (!caster_position.has_value() || !target_position.has_value()) {
-    return {};
+    return outcome;
   }
 
   ecs::SkillRuntimeComponent& skill_runtime =
@@ -152,7 +166,8 @@ std::vector<ServerApp::OutboundEvent> ServerApp::HandleCastSkill(
       cast_skill_request, DistanceBetween(*caster_position, *target_position),
       now_seconds, &runtime_state);
   if (validation != shared::ErrorCode::kOk) {
-    return {};
+    outcome.result.error_code = validation;
+    return outcome;
   }
 
   skill_runtime.current_mp = runtime_state.current_mp;
@@ -164,13 +179,14 @@ std::vector<ServerApp::OutboundEvent> ServerApp::HandleCastSkill(
   const std::optional<SkillDefinition> skill_definition =
       skill_system_.FindSkill(cast_skill_request.skill_id);
   if (!skill_definition.has_value()) {
-    return {};
+    return outcome;
   }
 
-  const shared::CastSkillResult result = battle_system_.ResolveSkillHit(
+  outcome.result = battle_system_.ResolveSkillHit(
       cast_skill_request, skill_definition->base_damage, &combat_state);
-  if (result.error_code != shared::ErrorCode::kOk || !combat_state.is_dead) {
-    return {};
+  if (outcome.result.error_code != shared::ErrorCode::kOk ||
+      !combat_state.is_dead) {
+    return outcome;
   }
 
   const ecs::MonsterRefComponent monster_ref =
@@ -178,7 +194,7 @@ std::vector<ServerApp::OutboundEvent> ServerApp::HandleCastSkill(
   const auto monster_template =
       monster_templates_by_id_.find(monster_ref.monster_template_id);
   if (monster_template == monster_templates_by_id_.end()) {
-    return {};
+    return outcome;
   }
 
   const std::vector<shared::EntityId> drop_entity_ids =
@@ -186,37 +202,48 @@ std::vector<ServerApp::OutboundEvent> ServerApp::HandleCastSkill(
           &scene, cast_skill_request.target_entity_id,
           {DropItemSpec{monster_template->second.drop_item_id, 1U}});
 
-  std::vector<OutboundEvent> events;
-  events.push_back(AoiLeaveEvent{cast_skill_request.target_entity_id});
+  outcome.events.push_back(AoiLeaveEvent{cast_skill_request.target_entity_id});
   for (shared::EntityId drop_entity_id : drop_entity_ids) {
     const std::optional<shared::VisibleEntitySnapshot> drop_snapshot =
         scene.BuildVisibleSnapshot(drop_entity_id);
     if (drop_snapshot.has_value()) {
-      events.push_back(AoiEnterEvent{*drop_snapshot});
+      outcome.events.push_back(AoiEnterEvent{*drop_snapshot});
     }
   }
-  return events;
+  return outcome;
 }
 
 std::vector<ServerApp::OutboundEvent> ServerApp::HandlePickup(
     const Session* session, const shared::PickupRequest& pickup_request) {
+  return ResolvePickup(session, pickup_request).events;
+}
+
+ServerApp::PickupOutcome ServerApp::ResolvePickup(
+    const Session* session, const shared::PickupRequest& pickup_request) {
+  PickupOutcome outcome;
+  outcome.result.player_id = pickup_request.player_id;
+  outcome.result.drop_entity_id = pickup_request.drop_entity_id;
+  outcome.result.client_seq = pickup_request.client_seq;
+  outcome.result.error_code = shared::ErrorCode::kDropNotFound;
+
   const PlayerAndScene player_and_scene = FindBoundPlayerAndScene(session);
   if (player_and_scene.player == nullptr || player_and_scene.scene == nullptr) {
-    return {};
+    return outcome;
   }
 
-  const shared::PickupResult result = drop_system_.HandlePickup(
+  outcome.result = drop_system_.HandlePickup(
       player_and_scene.scene, player_and_scene.player, pickup_request, 20U);
-  if (result.error_code != shared::ErrorCode::kOk) {
-    return {};
+  if (outcome.result.error_code != shared::ErrorCode::kOk) {
+    return outcome;
   }
 
   player_and_scene.player->MarkDirty();
-  return {
+  outcome.events = {
       AoiLeaveEvent{pickup_request.drop_entity_id},
       BuildInventoryDelta(pickup_request.player_id,
                           player_and_scene.player->data().inventory),
   };
+  return outcome;
 }
 
 void ServerApp::BootstrapScene(std::uint32_t scene_id) {

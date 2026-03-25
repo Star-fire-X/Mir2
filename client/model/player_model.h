@@ -18,8 +18,8 @@ class PlayerModel {
   }
 
   void ApplySelfState(const protocol::SelfStateMessage& self_state) {
-    if (controlled_entity_id_ == self_state.entity_id) {
-      position_ = self_state.position;
+    if (controlled_entity_id_ == self_state.state.entity_id) {
+      position_ = self_state.state.position;
     }
   }
 

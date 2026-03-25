@@ -42,6 +42,15 @@ target_include_directories(server_runtime PUBLIC ${PROJECT_SOURCE_DIR})
 target_link_libraries(server_runtime PUBLIC server_scene server_db server_log)
 set_project_warnings(server_runtime)
 
+add_library(server_transport STATIC
+  app/server_app.cc
+  runtime/server_runtime.cc)
+
+target_include_directories(server_transport PUBLIC ${PROJECT_SOURCE_DIR})
+target_link_libraries(server_transport PUBLIC asio_headers server_config server_runtime
+                                             kcp_vendor shared_protocol)
+set_project_warnings(server_transport)
+
 add_library(server_gm STATIC
   gm/gm_command_handler.cc)
 
@@ -64,8 +73,8 @@ add_library(server_config STATIC
 target_include_directories(server_config PUBLIC ${PROJECT_SOURCE_DIR})
 set_project_warnings(server_config)
 
-add_executable(server_app app/server_main.cc app/server_app.cc)
-target_link_libraries(server_app PRIVATE server_config server_runtime)
+add_executable(server_app app/server_main.cc)
+target_link_libraries(server_app PRIVATE server_transport)
 set_project_warnings(server_app)
 
 add_executable(proto_dump ../tools/proto_dump/proto_dump_main.cc)
@@ -73,7 +82,7 @@ target_include_directories(proto_dump PRIVATE ${PROJECT_SOURCE_DIR})
 set_project_warnings(proto_dump)
 
 if(BUILD_TESTING)
-  add_test(NAME ServerAppSmokeCheck COMMAND $<TARGET_FILE:server_app>)
+  add_test(NAME ServerAppSmokeCheck COMMAND $<TARGET_FILE:server_app> --smoke-check)
 
   add_executable(
     inventory_test
@@ -153,6 +162,14 @@ if(BUILD_TESTING)
   target_include_directories(shared_contract_test PRIVATE ${PROJECT_SOURCE_DIR})
   target_link_libraries(shared_contract_test PRIVATE GTest::gtest_main)
   set_project_warnings(shared_contract_test)
+
+  add_executable(
+    server_runtime_test
+    tests/runtime/server_runtime_test.cc)
+  target_include_directories(server_runtime_test PRIVATE ${PROJECT_SOURCE_DIR})
+  target_link_libraries(server_runtime_test PRIVATE server_transport
+                                                    GTest::gtest_main)
+  set_project_warnings(server_runtime_test)
 
   add_executable(
     scene_spawn_test
@@ -322,6 +339,7 @@ if(BUILD_TESTING)
   gtest_discover_tests(gm_command_test)
   gtest_discover_tests(server_bootstrap_test)
   gtest_discover_tests(shared_contract_test)
+  gtest_discover_tests(server_runtime_test)
   gtest_discover_tests(scene_spawn_test)
   gtest_discover_tests(player_login_flow_test)
   gtest_discover_tests(logout_save_test)

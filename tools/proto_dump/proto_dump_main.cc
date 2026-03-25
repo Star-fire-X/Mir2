@@ -13,6 +13,8 @@ const char* MessageName(shared::MessageId message_id) {
       return "LoginRequest";
     case shared::MessageId::kLoginResponse:
       return "LoginResponse";
+    case shared::MessageId::kSceneChannelBootstrap:
+      return "SceneChannelBootstrap";
     case shared::MessageId::kEnterSceneRequest:
       return "EnterSceneRequest";
     case shared::MessageId::kEnterSceneSnapshot:
@@ -27,6 +29,12 @@ const char* MessageName(shared::MessageId message_id) {
       return "PickupResult";
     case shared::MessageId::kInventoryDelta:
       return "InventoryDelta";
+    case shared::MessageId::kSelfState:
+      return "SelfState";
+    case shared::MessageId::kAoiEnter:
+      return "AoiEnter";
+    case shared::MessageId::kAoiLeave:
+      return "AoiLeave";
     case shared::MessageId::kCastSkillRequest:
       return "CastSkillRequest";
     case shared::MessageId::kCastSkillResult:

@@ -1,5 +1,9 @@
+#include <string_view>
+#include <thread>  // NOLINT(build/c++11)
+
 #include "server/app/server_app.h"
 #include "server/config/config_manager.h"
+#include "server/runtime/server_runtime.h"
 
 namespace {
 
@@ -20,9 +24,21 @@ server::GameConfig BuildMinimalValidConfig() {
 
 }  // namespace
 
-int main() {
+int main(int argc, char** argv) {
   server::ConfigManager config_manager;
   config_manager.Load(BuildMinimalValidConfig());
-  server::ServerApp app(config_manager);
-  return app.Init() ? 0 : 1;
+  if (argc > 1 && std::string_view(argv[1]) == "--smoke-check") {
+    server::ServerApp app(config_manager);
+    return app.Init() ? 0 : 1;
+  }
+
+  server::ServerRuntime runtime(config_manager);
+  if (!runtime.Start()) {
+    return 1;
+  }
+
+  while (runtime.running()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  }
+  return 0;
 }
