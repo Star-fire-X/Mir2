@@ -6,6 +6,7 @@
 #include <functional>
 #include <memory>
 #include <unordered_map>
+#include <vector>
 
 #include "client/protocol/client_message.h"
 #include "client/view/drop_view.h"
@@ -49,6 +50,15 @@ class Scene {
   }
 
   [[nodiscard]] std::size_t ViewCount() const { return views_.size(); }
+
+  [[nodiscard]] std::vector<EntityView*> ViewList() {
+    std::vector<EntityView*> view_list;
+    view_list.reserve(views_.size());
+    for (auto& [_, view] : views_) {
+      view_list.push_back(view.get());
+    }
+    return view_list;
+  }
 
   [[nodiscard]] std::vector<const EntityView*> ViewList() const {
     std::vector<const EntityView*> view_list;

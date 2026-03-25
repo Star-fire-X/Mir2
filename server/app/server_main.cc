@@ -1,9 +1,9 @@
+#include <string_view>
+#include <thread>  // NOLINT(build/c++11)
+
 #include "server/app/server_app.h"
 #include "server/config/config_manager.h"
 #include "server/runtime/server_runtime.h"
-
-#include <string_view>
-#include <thread>  // NOLINT(build/c++11)
 
 namespace {
 

@@ -1,6 +1,6 @@
 #include "client/app/game_app.h"
 
-#include <chrono>
+#include <chrono>  // NOLINT(build/c++11)
 #include <cstdlib>
 #include <string>
 #include <thread>  // NOLINT(build/c++11)
@@ -58,7 +58,8 @@ GameApp::GameApp(NetworkConfig config) : network_manager_(std::move(config)) {
 GameApp::~GameApp() { Stop(); }
 
 void GameApp::Run() {
-  running_ = true;
+  run_thread_id_ = std::this_thread::get_id();
+  running_.store(true);
   sdl_runtime_.Initialize(SdlRuntime::Options{
       .title = "mir2",
       .width = 960,
@@ -71,14 +72,24 @@ void GameApp::Run() {
         protocol::OutboundMessage{shared::LoginRequest{"hero", "pw"}});
     login_requested_ = true;
   }
-  while (running_) {
+  while (running_.load()) {
     RunFrame();
     std::this_thread::sleep_for(std::chrono::milliseconds(16));
   }
+  Shutdown();
+  run_thread_id_ = std::thread::id();
 }
 
 void GameApp::Stop() {
-  running_ = false;
+  running_.store(false);
+  if (run_thread_id_ == std::thread::id() ||
+      run_thread_id_ == std::this_thread::get_id()) {
+    Shutdown();
+    run_thread_id_ = std::thread::id();
+  }
+}
+
+void GameApp::Shutdown() {
   network_manager_.Stop();
   sdl_runtime_.Shutdown();
 }
@@ -137,8 +148,8 @@ void GameApp::HandleLoginResponse(
   if (message.response.error_code == shared::ErrorCode::kOk) {
     player_id_ = message.response.player_id;
     if (!enter_scene_requested_) {
-      network_manager_.QueueOutbound(protocol::OutboundMessage{
-          shared::EnterSceneRequest{player_id_, 1}});
+      network_manager_.QueueOutbound(
+          protocol::OutboundMessage{shared::EnterSceneRequest{player_id_, 1}});
       enter_scene_requested_ = true;
     }
     AppendProtocolSummary("login_response");
@@ -241,7 +252,8 @@ void GameApp::HandlePickupResult(const protocol::PickupResultMessage& message) {
 }
 
 void GameApp::PumpNetwork() {
-  for (const protocol::ClientMessage& message : network_manager_.DrainInbound()) {
+  for (const protocol::ClientMessage& message :
+       network_manager_.DrainInbound()) {
     protocol_dispatcher_.Dispatch(message);
   }
 }
@@ -253,7 +265,7 @@ void GameApp::HandleInput() {
 
   for (const SdlEvent& event : sdl_runtime_.PollInput()) {
     if (event.type == SdlEventType::kQuit) {
-      running_ = false;
+      running_.store(false);
       continue;
     }
     if (event.type != SdlEventType::kLeftClick) {
@@ -272,14 +284,14 @@ void GameApp::HandleInput() {
 
     if (PointInRect(event.x, event.y, kPickupButtonRect)) {
       if (selected_entity_id_.value != 0 && player_id_.value != 0) {
-        network_manager_.QueueOutbound(protocol::OutboundMessage{
-            shared::PickupRequest{player_id_, selected_entity_id_,
-                                  next_client_seq_++}});
+        network_manager_.QueueOutbound(
+            protocol::OutboundMessage{shared::PickupRequest{
+                player_id_, selected_entity_id_, next_client_seq_++}});
       }
       continue;
     }
 
-    Scene* scene =
+    const Scene* scene =
         scene_manager_.Find(model_root_.scene_state_model().scene_id());
     if (scene != nullptr) {
       for (const EntityView* view : scene->ViewList()) {
@@ -297,7 +309,8 @@ void GameApp::HandleInput() {
     if (model_root_.player_model().controlled_entity_id().value != 0) {
       player_controller_.HandleMoveInput(
           model_root_.player_model().controlled_entity_id(),
-          ScreenToWorld(event.x, event.y), next_client_seq_++, SDL_GetTicks64());
+          ScreenToWorld(event.x, event.y), next_client_seq_++,
+          SDL_GetTicks64());
     }
   }
 }
@@ -311,8 +324,8 @@ void GameApp::UpdateScene() {
     return;
   }
 
-  for (const EntityView* view : scene->ViewList()) {
-    const_cast<EntityView*>(view)->UpdateInterpolation(1.0F);
+  for (EntityView* view : scene->ViewList()) {
+    view->UpdateInterpolation(1.0F);
   }
 }
 
@@ -331,18 +344,16 @@ void GameApp::Render() {
   SDL_SetRenderDrawColor(renderer, 48, 52, 60, 255);
   for (int x = 0; x <= 12; ++x) {
     SDL_RenderDrawLine(renderer, kWorldOriginX + (x * kTileSizePx),
-                       kWorldOriginY,
-                       kWorldOriginX + (x * kTileSizePx),
+                       kWorldOriginY, kWorldOriginX + (x * kTileSizePx),
                        kWorldOriginY + (8 * kTileSizePx));
   }
   for (int y = 0; y <= 8; ++y) {
-    SDL_RenderDrawLine(renderer, kWorldOriginX,
-                       kWorldOriginY + (y * kTileSizePx),
-                       kWorldOriginX + (12 * kTileSizePx),
-                       kWorldOriginY + (y * kTileSizePx));
+    SDL_RenderDrawLine(
+        renderer, kWorldOriginX, kWorldOriginY + (y * kTileSizePx),
+        kWorldOriginX + (12 * kTileSizePx), kWorldOriginY + (y * kTileSizePx));
   }
 
-  Scene* scene =
+  const Scene* scene =
       scene_manager_.Find(model_root_.scene_state_model().scene_id());
   if (scene != nullptr) {
     for (const EntityView* view : scene->ViewList()) {

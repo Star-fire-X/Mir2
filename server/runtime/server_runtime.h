@@ -3,11 +3,11 @@
 
 #include <array>
 #include <atomic>
-#include <condition_variable>
+#include <condition_variable>  // NOLINT(build/c++11)
 #include <cstdint>
 #include <functional>
 #include <memory>
-#include <mutex>
+#include <mutex>  // NOLINT(build/c++11)
 #include <queue>
 #include <string>
 #include <thread>  // NOLINT(build/c++11)
@@ -29,6 +29,7 @@ class ServerRuntime {
     std::string bind_address = "127.0.0.1";
     std::uint16_t tcp_port = 5000;
     std::uint16_t udp_port = 5001;
+    std::function<std::uint64_t()> now_ms = nullptr;
   };
 
   explicit ServerRuntime(const ConfigManager& config_manager);
@@ -54,18 +55,19 @@ class ServerRuntime {
   void EnqueueLogicTask(std::function<void()> task);
   void HandleLogin(const std::shared_ptr<ClientConnection>& connection,
                    const shared::LoginRequest& login_request);
-  void HandleEnterScene(
-      const std::shared_ptr<ClientConnection>& connection,
-      const shared::EnterSceneRequest& enter_scene_request);
+  void HandleEnterScene(const std::shared_ptr<ClientConnection>& connection,
+                        const shared::EnterSceneRequest& enter_scene_request);
   void HandleMove(const std::shared_ptr<KcpSceneChannel>& channel,
                   const shared::MoveRequest& move_request);
   void HandleCastSkill(const std::shared_ptr<KcpSceneChannel>& channel,
                        const shared::CastSkillRequest& cast_skill_request);
   void HandlePickup(const std::shared_ptr<KcpSceneChannel>& channel,
                     const shared::PickupRequest& pickup_request);
-  void SendOutboundEvents(
-      const std::shared_ptr<KcpSceneChannel>& channel,
-      const std::vector<ServerApp::OutboundEvent>& events);
+  void SendOutboundEvents(const std::shared_ptr<KcpSceneChannel>& channel,
+                          const std::vector<ServerApp::OutboundEvent>& events);
+  void SendUdpEnvelope(const asio::ip::udp::endpoint& remote_endpoint,
+                       shared::MessageId message_id,
+                       const std::vector<std::uint8_t>& payload);
 
   Options options_;
   ServerApp server_app_;

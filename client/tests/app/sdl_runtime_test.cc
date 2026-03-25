@@ -1,7 +1,8 @@
+#include "client/platform/sdl_runtime.h"
+
 #include <cstdlib>
 #include <vector>
 
-#include "client/platform/sdl_runtime.h"
 #include "gtest/gtest.h"
 
 namespace client {

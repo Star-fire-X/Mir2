@@ -9,6 +9,8 @@ enum class MessageId : std::uint16_t {
   kLoginRequest = 1000,
   kLoginResponse = 1001,
   kSceneChannelBootstrap = 1002,
+  kSceneChannelHello = 1003,
+  kSceneChannelHelloAck = 1004,
   kEnterSceneRequest = 2000,
   kEnterSceneSnapshot = 2001,
   kMoveRequest = 2002,

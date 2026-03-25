@@ -1,10 +1,12 @@
 #include "server/runtime/server_runtime.h"
 
 #include <array>
-#include <chrono>
+#include <chrono>  // NOLINT(build/c++11)
+#include <deque>
 #include <optional>
+#include <random>
 #include <string>
-#include <system_error>
+#include <system_error>  // NOLINT(build/c++11)
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -14,19 +16,21 @@
 #include "asio/post.hpp"
 #include "asio/read.hpp"
 #include "asio/write.hpp"
-#include "ikcp.h"
+#include "ikcp.h"  // NOLINT(build/include_subdir)
 #include "shared/protocol/runtime_messages.h"
 #include "shared/protocol/wire_codec.h"
 
 namespace server {
 namespace {
 
+using KcpSize = long;  // NOLINT(runtime/int)
+
 constexpr std::size_t kEnvelopeHeaderSize =
     sizeof(std::uint16_t) + sizeof(std::uint32_t);
 constexpr std::size_t kMaxUdpPacketSize = 2048;
 
-std::uint32_t DecodePayloadSize(const std::array<std::uint8_t, kEnvelopeHeaderSize>&
-                                    header) {
+std::uint32_t DecodePayloadSize(
+    const std::array<std::uint8_t, kEnvelopeHeaderSize>& header) {
   return static_cast<std::uint32_t>(header[2]) |
          (static_cast<std::uint32_t>(header[3]) << 8U) |
          (static_cast<std::uint32_t>(header[4]) << 16U) |
@@ -51,6 +55,19 @@ std::uint32_t NowMs() {
           .count());
 }
 
+std::string GenerateSessionToken() {
+  constexpr char kHexDigits[] = "0123456789abcdef";
+  std::random_device random_device;
+  std::string token;
+  token.reserve(32);
+  for (int index = 0; index < 16; ++index) {
+    const std::uint8_t byte = static_cast<std::uint8_t>(random_device());
+    token.push_back(kHexDigits[byte >> 4U]);
+    token.push_back(kHexDigits[byte & 0x0FU]);
+  }
+  return token;
+}
+
 }  // namespace
 
 class ServerRuntime::ClientConnection
@@ -65,17 +82,11 @@ class ServerRuntime::ClientConnection
   Session* session() { return &session_; }
 
   void WriteEnvelope(shared::MessageId message_id,
-                     std::vector<std::uint8_t> payload) {
-    auto bytes = std::make_shared<std::vector<std::uint8_t>>(
-        shared::EncodeEnvelope(message_id, payload));
-    auto self = shared_from_this();
-    asio::async_write(
-        socket_, asio::buffer(*bytes),
-        [self, bytes](const std::error_code& error, std::size_t /*written*/) {
-          if (error) {
-            self->Close();
-          }
-        });
+                     const std::vector<std::uint8_t>& payload) {
+    pending_writes_.push_back(shared::EncodeEnvelope(message_id, payload));
+    if (!write_in_progress_) {
+      StartWrite();
+    }
   }
 
  private:
@@ -93,6 +104,10 @@ class ServerRuntime::ClientConnection
   }
 
   void ReadPayload(std::uint32_t payload_size) {
+    if (payload_size > shared::kMaxEnvelopePayloadSize) {
+      Close();
+      return;
+    }
     payload_buffer_.assign(payload_size, 0);
     auto self = shared_from_this();
     if (payload_size == 0U) {
@@ -112,9 +127,11 @@ class ServerRuntime::ClientConnection
   }
 
   void HandleDecodedEnvelope() {
-    std::vector<std::uint8_t> bytes(header_buffer_.begin(), header_buffer_.end());
+    std::vector<std::uint8_t> bytes(header_buffer_.begin(),
+                                    header_buffer_.end());
     bytes.insert(bytes.end(), payload_buffer_.begin(), payload_buffer_.end());
-    const std::optional<shared::Envelope> envelope = shared::DecodeEnvelope(bytes);
+    const std::optional<shared::Envelope> envelope =
+        shared::DecodeEnvelope(bytes);
     if (!envelope.has_value()) {
       Close();
       return;
@@ -149,6 +166,28 @@ class ServerRuntime::ClientConnection
     ReadHeader();
   }
 
+  void StartWrite() {
+    if (write_in_progress_ || pending_writes_.empty()) {
+      return;
+    }
+
+    write_in_progress_ = true;
+    auto bytes = std::make_shared<std::vector<std::uint8_t>>(
+        std::move(pending_writes_.front()));
+    pending_writes_.pop_front();
+    auto self = shared_from_this();
+    asio::async_write(
+        socket_, asio::buffer(*bytes),
+        [self, bytes](const std::error_code& error, std::size_t /*written*/) {
+          self->write_in_progress_ = false;
+          if (error) {
+            self->Close();
+            return;
+          }
+          self->StartWrite();
+        });
+  }
+
   void Close() {
     std::error_code error;
     socket_.close(error);
@@ -160,14 +199,20 @@ class ServerRuntime::ClientConnection
   ServerRuntime* runtime_ = nullptr;
   std::array<std::uint8_t, kEnvelopeHeaderSize> header_buffer_{};
   std::vector<std::uint8_t> payload_buffer_;
+  std::deque<std::vector<std::uint8_t>> pending_writes_;
+  bool write_in_progress_ = false;
 };
 
 class ServerRuntime::KcpSceneChannel
     : public std::enable_shared_from_this<ServerRuntime::KcpSceneChannel> {
  public:
   KcpSceneChannel(std::uint32_t conv, ServerRuntime* runtime,
-                  std::shared_ptr<ClientConnection> connection)
-      : conv_(conv), runtime_(runtime), connection_(std::move(connection)) {
+                  std::shared_ptr<ClientConnection> connection,
+                  std::string session_token)
+      : conv_(conv),
+        runtime_(runtime),
+        connection_(std::move(connection)),
+        expected_session_token_(std::move(session_token)) {
     kcp_ = ikcp_create(conv_, this);
     kcp_->output = &KcpSceneChannel::Output;
     ikcp_wndsize(kcp_, 128, 128);
@@ -182,26 +227,38 @@ class ServerRuntime::KcpSceneChannel
 
   Session* session() { return connection_->session(); }
 
-  float AdvanceSceneTime() {
-    now_seconds_ += 1.0F;
-    return now_seconds_;
+  bool TryAuthenticate(const shared::SceneChannelHello& hello,
+                       const asio::ip::udp::endpoint& remote_endpoint) {
+    if (hello.kcp_conv != conv_ ||
+        hello.session_token != expected_session_token_) {
+      return false;
+    }
+    if (authenticated_) {
+      return remote_endpoint_.has_value() &&
+             *remote_endpoint_ == remote_endpoint;
+    }
+    remote_endpoint_ = remote_endpoint;
+    authenticated_ = true;
+    return true;
   }
 
-  void SetRemoteEndpoint(const asio::ip::udp::endpoint& remote_endpoint) {
-    remote_endpoint_ = remote_endpoint;
+  bool AcceptsEndpoint(const asio::ip::udp::endpoint& remote_endpoint) const {
+    return authenticated_ && remote_endpoint_.has_value() &&
+           *remote_endpoint_ == remote_endpoint;
   }
 
   void Input(std::span<const std::uint8_t> bytes) {
+    const KcpSize byte_count = static_cast<KcpSize>(bytes.size());
     if (kcp_ == nullptr ||
         ikcp_input(kcp_, reinterpret_cast<const char*>(bytes.data()),
-                   static_cast<long>(bytes.size())) < 0) {
+                   byte_count) < 0) {
       return;
     }
     DrainReceivedMessages();
   }
 
   void SendEnvelope(shared::MessageId message_id,
-                    std::vector<std::uint8_t> payload) {
+                    const std::vector<std::uint8_t>& payload) {
     if (kcp_ == nullptr) {
       return;
     }
@@ -245,8 +302,8 @@ class ServerRuntime::KcpSceneChannel
   void DrainReceivedMessages() {
     std::array<char, kMaxUdpPacketSize> buffer{};
     while (true) {
-      const int received = ikcp_recv(kcp_, buffer.data(),
-                                     static_cast<int>(buffer.size()));
+      const int received =
+          ikcp_recv(kcp_, buffer.data(), static_cast<int>(buffer.size()));
       if (received < 0) {
         return;
       }
@@ -271,7 +328,8 @@ class ServerRuntime::KcpSceneChannel
         }
         case shared::CastSkillRequest::kMessageId: {
           const auto cast_skill_request =
-              shared::DecodeMessage<shared::CastSkillRequest>(envelope->payload);
+              shared::DecodeMessage<shared::CastSkillRequest>(
+                  envelope->payload);
           if (cast_skill_request.has_value()) {
             runtime_->HandleCastSkill(shared_from_this(), *cast_skill_request);
           }
@@ -296,18 +354,24 @@ class ServerRuntime::KcpSceneChannel
   std::shared_ptr<ClientConnection> connection_;
   ikcpcb* kcp_ = nullptr;
   std::optional<asio::ip::udp::endpoint> remote_endpoint_;
-  float now_seconds_ = 0.0F;
+  std::string expected_session_token_;
+  bool authenticated_ = false;
 };
 
 ServerRuntime::ServerRuntime(const ConfigManager& config_manager)
     : ServerRuntime(config_manager, Options{}) {}
 
-ServerRuntime::ServerRuntime(const ConfigManager& config_manager, Options options)
+ServerRuntime::ServerRuntime(const ConfigManager& config_manager,
+                             Options options)
     : options_(std::move(options)),
       server_app_(config_manager),
       acceptor_(io_context_),
       udp_socket_(io_context_),
-      kcp_tick_timer_(io_context_) {}
+      kcp_tick_timer_(io_context_) {
+  if (!options_.now_ms) {
+    options_.now_ms = []() { return static_cast<std::uint64_t>(NowMs()); };
+  }
+}
 
 ServerRuntime::~ServerRuntime() { Stop(); }
 
@@ -420,21 +484,54 @@ void ServerRuntime::StartUdpReceive() {
   udp_socket_.async_receive_from(
       asio::buffer(udp_read_buffer_), udp_remote_endpoint_,
       [this](const std::error_code& error, std::size_t bytes_received) {
-        if (!error && bytes_received >= sizeof(std::uint32_t)) {
-          const std::uint32_t conv = DecodeConv(
-              std::span<const std::uint8_t>(udp_read_buffer_.data(), bytes_received));
-          std::shared_ptr<KcpSceneChannel> channel;
-          {
-            std::scoped_lock lock(channel_mutex_);
-            const auto it = scene_channels_.find(conv);
-            if (it != scene_channels_.end()) {
-              channel = it->second;
+        if (!error) {
+          const std::span<const std::uint8_t> bytes(udp_read_buffer_.data(),
+                                                    bytes_received);
+          const std::optional<shared::Envelope> raw_envelope =
+              shared::DecodeEnvelope(bytes);
+          if (raw_envelope.has_value()) {
+            if (raw_envelope->message_id ==
+                shared::SceneChannelHello::kMessageId) {
+              const std::optional<shared::SceneChannelHello> hello =
+                  shared::DecodeMessage<shared::SceneChannelHello>(
+                      raw_envelope->payload);
+              if (hello.has_value()) {
+                std::shared_ptr<KcpSceneChannel> channel;
+                {
+                  std::scoped_lock lock(channel_mutex_);
+                  const auto it = scene_channels_.find(hello->kcp_conv);
+                  if (it != scene_channels_.end()) {
+                    channel = it->second;
+                  }
+                }
+                const shared::ErrorCode error_code =
+                    channel != nullptr && channel->TryAuthenticate(
+                                              *hello, udp_remote_endpoint_)
+                        ? shared::ErrorCode::kOk
+                        : shared::ErrorCode::kInvalidCredentials;
+                SendUdpEnvelope(
+                    udp_remote_endpoint_,
+                    shared::SceneChannelHelloAck::kMessageId,
+                    shared::EncodeMessage(shared::SceneChannelHelloAck{
+                        .kcp_conv = hello->kcp_conv,
+                        .error_code = error_code,
+                    }));
+              }
             }
-          }
-          if (channel != nullptr) {
-            channel->SetRemoteEndpoint(udp_remote_endpoint_);
-            channel->Input(std::span<const std::uint8_t>(udp_read_buffer_.data(),
-                                                         bytes_received));
+          } else if (bytes_received >= sizeof(std::uint32_t)) {
+            const std::uint32_t conv = DecodeConv(bytes);
+            std::shared_ptr<KcpSceneChannel> channel;
+            {
+              std::scoped_lock lock(channel_mutex_);
+              const auto it = scene_channels_.find(conv);
+              if (it != scene_channels_.end()) {
+                channel = it->second;
+              }
+            }
+            if (channel != nullptr &&
+                channel->AcceptsEndpoint(udp_remote_endpoint_)) {
+              channel->Input(bytes);
+            }
           }
         }
 
@@ -513,8 +610,9 @@ void ServerRuntime::HandleEnterScene(
         server_app_.EnterScene(connection->session(), enter_scene_request);
     const std::uint32_t conv =
         static_cast<std::uint32_t>(connection->session()->session_id());
-    const auto channel =
-        std::make_shared<KcpSceneChannel>(conv, this, connection);
+    const std::string session_token = GenerateSessionToken();
+    const auto channel = std::make_shared<KcpSceneChannel>(
+        conv, this, connection, session_token);
     {
       std::scoped_lock lock(channel_mutex_);
       scene_channels_[conv] = channel;
@@ -525,8 +623,7 @@ void ServerRuntime::HandleEnterScene(
         .scene_id = enter_scene_request.scene_id,
         .kcp_conv = conv,
         .udp_port = options_.udp_port,
-        .session_token =
-            "session-" + std::to_string(connection->session()->session_id()),
+        .session_token = session_token,
     };
 
     asio::post(io_context_, [connection, bootstrap, events]() {
@@ -549,8 +646,9 @@ void ServerRuntime::HandleMove(const std::shared_ptr<KcpSceneChannel>& channel,
   EnqueueLogicTask([this, channel, move_request]() {
     const std::vector<ServerApp::OutboundEvent> events =
         server_app_.HandleMove(channel->session(), move_request, 1.0F);
-    asio::post(io_context_,
-               [this, channel, events]() { SendOutboundEvents(channel, events); });
+    asio::post(io_context_, [this, channel, events]() {
+      SendOutboundEvents(channel, events);
+    });
   });
 }
 
@@ -559,7 +657,8 @@ void ServerRuntime::HandleCastSkill(
     const shared::CastSkillRequest& cast_skill_request) {
   EnqueueLogicTask([this, channel, cast_skill_request]() {
     const ServerApp::CastSkillOutcome outcome = server_app_.ResolveCastSkill(
-        channel->session(), cast_skill_request, channel->AdvanceSceneTime());
+        channel->session(), cast_skill_request,
+        static_cast<float>(options_.now_ms()) / 1000.0F);
     asio::post(io_context_, [this, channel, outcome]() {
       channel->SendEnvelope(shared::CastSkillResult::kMessageId,
                             shared::EncodeMessage(outcome.result));
@@ -591,26 +690,42 @@ void ServerRuntime::SendOutboundEvents(
           using Payload = std::decay_t<decltype(payload)>;
           if constexpr (std::is_same_v<Payload, shared::EnterSceneSnapshot>) {
             return;
-          } else if constexpr (std::is_same_v<Payload, ServerApp::SelfStateEvent>) {
-            channel->SendEnvelope(
-                shared::SelfState::kMessageId,
-                shared::EncodeMessage(
-                    shared::SelfState{payload.entity_id, payload.position}));
-          } else if constexpr (std::is_same_v<Payload, ServerApp::AoiEnterEvent>) {
+          }
+          if constexpr (std::is_same_v<Payload, ServerApp::SelfStateEvent>) {
+            channel->SendEnvelope(shared::SelfState::kMessageId,
+                                  shared::EncodeMessage(shared::SelfState{
+                                      payload.entity_id, payload.position}));
+            return;
+          }
+          if constexpr (std::is_same_v<Payload, ServerApp::AoiEnterEvent>) {
             channel->SendEnvelope(
                 shared::AoiEnter::kMessageId,
                 shared::EncodeMessage(shared::AoiEnter{payload.entity}));
-          } else if constexpr (std::is_same_v<Payload, ServerApp::AoiLeaveEvent>) {
+            return;
+          }
+          if constexpr (std::is_same_v<Payload, ServerApp::AoiLeaveEvent>) {
             channel->SendEnvelope(
                 shared::AoiLeave::kMessageId,
                 shared::EncodeMessage(shared::AoiLeave{payload.entity_id}));
-          } else if constexpr (std::is_same_v<Payload, shared::InventoryDelta>) {
+            return;
+          }
+          if constexpr (std::is_same_v<Payload, shared::InventoryDelta>) {
             channel->SendEnvelope(shared::InventoryDelta::kMessageId,
                                   shared::EncodeMessage(payload));
           }
         },
         event);
   }
+}
+
+void ServerRuntime::SendUdpEnvelope(
+    const asio::ip::udp::endpoint& remote_endpoint,
+    shared::MessageId message_id, const std::vector<std::uint8_t>& payload) {
+  auto bytes = std::make_shared<std::vector<std::uint8_t>>(
+      shared::EncodeEnvelope(message_id, payload));
+  udp_socket_.async_send_to(
+      asio::buffer(*bytes), remote_endpoint,
+      [bytes](const std::error_code& /*error*/, std::size_t /*written*/) {});
 }
 
 }  // namespace server

@@ -15,9 +15,9 @@ TEST(NetworkQueueTest, EnqueuesMessagesFromNetworkThreadInOrder) {
 
   std::thread network_thread([&network_manager]() {
     network_manager.Enqueue(
-      protocol::ClientMessage{protocol::EnterSceneSnapshotMessage{}});
+        protocol::ClientMessage{protocol::EnterSceneSnapshotMessage{}});
     network_manager.Enqueue(
-      protocol::ClientMessage{protocol::SelfStateMessage{}});
+        protocol::ClientMessage{protocol::SelfStateMessage{}});
   });
   network_thread.join();
 

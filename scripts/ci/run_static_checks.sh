@@ -11,18 +11,14 @@ GOOGLETEST_SOURCE_DIR="${GOOGLETEST_SOURCE_DIR:-}"
 export PATH="$HOME/.local/bin:$PATH"
 
 collect_cpp_files() {
-  (
-    cd "${ROOT_DIR}"
-    find . -type f \
-      \( -name "*.h" -o -name "*.hpp" -o -name "*.hh" -o -name "*.cc" -o -name "*.cpp" -o -name "*.cxx" \) \
-      -not -path "./.git/*" \
-      -not -path "./.worktrees/*" \
-      -not -path "./build/*" \
-      -not -path "./build-*/*" \
-      -not -path "./third_party/*" | sort
-  ) | while IFS= read -r relative_path; do
-    printf '%s/%s\n' "${ROOT_DIR}" "${relative_path#./}"
-  done
+  cd "${ROOT_DIR}"
+  find . -type f \
+    \( -name "*.h" -o -name "*.hpp" -o -name "*.hh" -o -name "*.cc" -o -name "*.cpp" -o -name "*.cxx" \) \
+    -not -path "./.git/*" \
+    -not -path "./.worktrees/*" \
+    -not -path "./build/*" \
+    -not -path "./build-*/*" \
+    -not -path "./third_party/*" | sort
 }
 
 CMAKE_ARGS=()
@@ -73,15 +69,17 @@ if ! command -v clang-format >/dev/null 2>&1; then
   exit 1
 fi
 
-clang-format --dry-run --Werror -style=Google "${CPP_FILES[@]}"
-
 if ! command -v cpplint >/dev/null 2>&1; then
   echo "cpplint is required for style checks."
   exit 1
 fi
 
-cpplint \
-  --quiet \
-  --repository="${ROOT_DIR}" \
-  --filter=-legal/copyright \
-  "${CPP_FILES[@]}"
+(
+  cd "${ROOT_DIR}"
+  clang-format --dry-run --Werror -style=Google "${CPP_FILES[@]}"
+  cpplint \
+    --quiet \
+    --repository="${ROOT_DIR}" \
+    --filter=-legal/copyright \
+    "${CPP_FILES[@]}"
+)

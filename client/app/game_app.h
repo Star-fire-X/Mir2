@@ -1,7 +1,9 @@
 #ifndef CLIENT_APP_GAME_APP_H_
 #define CLIENT_APP_GAME_APP_H_
 
+#include <atomic>
 #include <string>
+#include <thread>  // NOLINT(build/c++11)
 #include <vector>
 
 #include "client/controller/player_controller.h"
@@ -57,6 +59,7 @@ class GameApp {
   void Render();
   void UpdateDevPanel();
   void AppendProtocolSummary(std::string summary);
+  void Shutdown();
 
   NetworkManager network_manager_;
   SdlRuntime sdl_runtime_;
@@ -67,13 +70,14 @@ class GameApp {
   PlayerController player_controller_;
   SkillController skill_controller_;
   DevPanel dev_panel_;
-  bool running_ = false;
+  std::atomic<bool> running_{false};
   bool login_requested_ = false;
   bool enter_scene_requested_ = false;
   std::uint32_t next_client_seq_ = 1;
   shared::PlayerId player_id_{};
   shared::EntityId selected_entity_id_{};
   std::vector<std::string> recent_protocol_summaries_;
+  std::thread::id run_thread_id_{};
 };
 
 }  // namespace client

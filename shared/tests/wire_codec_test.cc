@@ -1,10 +1,11 @@
+#include "shared/protocol/wire_codec.h"
+
 #include <cstdint>
 #include <vector>
 
 #include "gtest/gtest.h"
 #include "shared/protocol/combat_messages.h"
 #include "shared/protocol/runtime_messages.h"
-#include "shared/protocol/wire_codec.h"
 
 namespace shared {
 namespace {
@@ -52,14 +53,14 @@ TEST(WireCodecTest, EnvelopeRoundTripsCastAndPickupResults) {
 
   const std::optional<CastSkillResult> decoded_cast =
       DecodeMessage<CastSkillResult>(
-          DecodeEnvelope(
-              EncodeEnvelope(cast_result.kMessageId, EncodeMessage(cast_result)))
+          DecodeEnvelope(EncodeEnvelope(cast_result.kMessageId,
+                                        EncodeMessage(cast_result)))
               ->payload);
   const std::optional<PickupResult> decoded_pickup =
-      DecodeMessage<PickupResult>(DecodeEnvelope(EncodeEnvelope(
-                                     pickup_result.kMessageId,
-                                     EncodeMessage(pickup_result)))
-                                     ->payload);
+      DecodeMessage<PickupResult>(
+          DecodeEnvelope(EncodeEnvelope(pickup_result.kMessageId,
+                                        EncodeMessage(pickup_result)))
+              ->payload);
 
   ASSERT_TRUE(decoded_cast.has_value());
   ASSERT_TRUE(decoded_pickup.has_value());
@@ -67,6 +68,43 @@ TEST(WireCodecTest, EnvelopeRoundTripsCastAndPickupResults) {
   EXPECT_EQ(decoded_cast->hp_delta, cast_result.hp_delta);
   EXPECT_EQ(decoded_pickup->drop_entity_id, pickup_result.drop_entity_id);
   EXPECT_EQ(decoded_pickup->client_seq, pickup_result.client_seq);
+}
+
+TEST(WireCodecTest, EnvelopeRoundTripsSceneChannelHelloAndAck) {
+  const SceneChannelHello hello{
+      .kcp_conv = 77,
+      .session_token = "token-abc",
+  };
+  const SceneChannelHelloAck ack{
+      .kcp_conv = 77,
+      .error_code = ErrorCode::kOk,
+  };
+
+  const std::optional<SceneChannelHello> decoded_hello =
+      DecodeMessage<SceneChannelHello>(
+          DecodeEnvelope(EncodeEnvelope(hello.kMessageId, EncodeMessage(hello)))
+              ->payload);
+  const std::optional<SceneChannelHelloAck> decoded_ack =
+      DecodeMessage<SceneChannelHelloAck>(
+          DecodeEnvelope(EncodeEnvelope(ack.kMessageId, EncodeMessage(ack)))
+              ->payload);
+
+  ASSERT_TRUE(decoded_hello.has_value());
+  ASSERT_TRUE(decoded_ack.has_value());
+  EXPECT_EQ(decoded_hello->kcp_conv, hello.kcp_conv);
+  EXPECT_EQ(decoded_hello->session_token, hello.session_token);
+  EXPECT_EQ(decoded_ack->kcp_conv, ack.kcp_conv);
+  EXPECT_EQ(decoded_ack->error_code, ack.error_code);
+}
+
+TEST(WireCodecTest, DecodeEnvelopeRejectsOversizedPayload) {
+  const std::vector<std::uint8_t> oversized_payload(
+      kMaxEnvelopePayloadSize + 1U, 0xAB);
+
+  const std::optional<Envelope> envelope = DecodeEnvelope(
+      EncodeEnvelope(MessageId::kSceneChannelBootstrap, oversized_payload));
+
+  EXPECT_FALSE(envelope.has_value());
 }
 
 }  // namespace

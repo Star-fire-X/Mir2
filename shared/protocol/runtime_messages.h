@@ -7,6 +7,7 @@
 #include "shared/protocol/message_ids.h"
 #include "shared/protocol/scene_messages.h"
 #include "shared/types/entity_id.h"
+#include "shared/types/error_codes.h"
 #include "shared/types/player_id.h"
 
 namespace shared {
@@ -18,6 +19,18 @@ struct SceneChannelBootstrap {
   std::uint32_t kcp_conv = 0;
   std::uint16_t udp_port = 0;
   std::string session_token;
+};
+
+struct SceneChannelHello {
+  static constexpr MessageId kMessageId = MessageId::kSceneChannelHello;
+  std::uint32_t kcp_conv = 0;
+  std::string session_token;
+};
+
+struct SceneChannelHelloAck {
+  static constexpr MessageId kMessageId = MessageId::kSceneChannelHelloAck;
+  std::uint32_t kcp_conv = 0;
+  ErrorCode error_code = ErrorCode::kInvalidCredentials;
 };
 
 struct SelfState {

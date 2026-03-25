@@ -1,9 +1,9 @@
 #include "client/net/network_manager.h"
 
-#include <chrono>
+#include <chrono>  // NOLINT(build/c++11)
 #include <optional>
 #include <string>
-#include <system_error>
+#include <system_error>  // NOLINT(build/c++11)
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -18,6 +18,8 @@
 
 namespace client {
 namespace {
+
+using KcpSize = long;  // NOLINT(runtime/int)
 
 constexpr std::size_t kEnvelopeHeaderSize =
     sizeof(std::uint16_t) + sizeof(std::uint32_t);
@@ -50,7 +52,8 @@ std::optional<protocol::ClientMessage> DecodeInboundMessage(
     }
     case shared::SceneChannelBootstrap::kMessageId: {
       const auto bootstrap =
-          shared::DecodeMessage<shared::SceneChannelBootstrap>(envelope.payload);
+          shared::DecodeMessage<shared::SceneChannelBootstrap>(
+              envelope.payload);
       if (!bootstrap.has_value()) {
         return std::nullopt;
       }
@@ -120,7 +123,8 @@ std::optional<protocol::ClientMessage> DecodeInboundMessage(
 }
 
 std::vector<std::uint8_t> EncodeEnvelopeForPayload(const auto& payload) {
-  return shared::EncodeEnvelope(payload.kMessageId, shared::EncodeMessage(payload));
+  return shared::EncodeEnvelope(payload.kMessageId,
+                                shared::EncodeMessage(payload));
 }
 
 }  // namespace
@@ -145,6 +149,8 @@ void NetworkManager::Start() {
   tcp_connected_ = false;
   scene_channel_ready_ = false;
   write_in_progress_ = false;
+  scene_session_token_.clear();
+  pending_scene_outbound_.clear();
   if (kcp_ != nullptr) {
     ikcp_release(kcp_);
     kcp_ = nullptr;
@@ -185,6 +191,8 @@ void NetworkManager::Stop() {
   tcp_connected_ = false;
   scene_channel_ready_ = false;
   write_in_progress_ = false;
+  scene_session_token_.clear();
+  pending_scene_outbound_.clear();
 }
 
 void NetworkManager::QueueOutbound(OutboundMessage message) {
@@ -197,9 +205,14 @@ void NetworkManager::QueueOutbound(OutboundMessage message) {
       },
       message);
 
-  if (is_scene_message && scene_channel_ready_) {
-    asio::post(io_context_,
-               [this, message = std::move(message)]() { SendSceneOutbound(message); });
+  if (is_scene_message) {
+    asio::post(io_context_, [this, message = std::move(message)]() mutable {
+      if (!scene_channel_ready_ || kcp_ == nullptr) {
+        pending_scene_outbound_.push_back(std::move(message));
+        return;
+      }
+      SendSceneOutbound(message);
+    });
     return;
   }
 
@@ -261,11 +274,11 @@ void NetworkManager::ConnectTcp() {
 
 void NetworkManager::ConfigureSceneChannel(
     const shared::SceneChannelBootstrap& bootstrap) {
-  const bool start_udp = !scene_channel_ready_;
+  const bool start_udp = !udp_socket_.is_open();
+  const bool start_kcp_tick = kcp_ == nullptr;
 
   std::error_code error;
-  const asio::ip::address address =
-      asio::ip::make_address(config_.host, error);
+  const asio::ip::address address = asio::ip::make_address(config_.host, error);
   if (error) {
     return;
   }
@@ -287,54 +300,104 @@ void NetworkManager::ConfigureSceneChannel(
   }
   kcp_conv_ = bootstrap.kcp_conv;
   udp_server_endpoint_ = asio::ip::udp::endpoint(address, bootstrap.udp_port);
+  scene_session_token_ = bootstrap.session_token;
   kcp_ = ikcp_create(kcp_conv_, this);
   kcp_->output = &NetworkManager::KcpOutput;
   ikcp_wndsize(kcp_, 128, 128);
   ikcp_nodelay(kcp_, 1, 10, 2, 1);
-  scene_channel_ready_ = true;
+  scene_channel_ready_ = false;
 
   if (start_udp) {
     StartUdpReceive();
+  }
+  if (start_kcp_tick) {
     StartKcpTick();
   }
+  SendSceneHello();
+}
+
+void NetworkManager::SendSceneHello() {
+  if (!udp_socket_.is_open() || udp_server_endpoint_.port() == 0 ||
+      kcp_conv_ == 0 || scene_session_token_.empty()) {
+    return;
+  }
+
+  auto bytes = std::make_shared<std::vector<std::uint8_t>>(
+      shared::EncodeEnvelope(shared::SceneChannelHello::kMessageId,
+                             shared::EncodeMessage(shared::SceneChannelHello{
+                                 .kcp_conv = kcp_conv_,
+                                 .session_token = scene_session_token_,
+                             })));
+  udp_socket_.async_send_to(
+      asio::buffer(*bytes), udp_server_endpoint_,
+      [bytes](const std::error_code& /*error*/, std::size_t /*written*/) {});
 }
 
 void NetworkManager::ReadHeader() {
-  asio::async_read(
-      tcp_socket_, asio::buffer(header_buffer_),
-      [this](const std::error_code& error, std::size_t /*read*/) {
-        if (error) {
-          return;
-        }
-        ReadPayload(DecodePayloadSize(header_buffer_));
-      });
+  asio::async_read(tcp_socket_, asio::buffer(header_buffer_),
+                   [this](const std::error_code& error, std::size_t /*read*/) {
+                     if (error) {
+                       return;
+                     }
+                     const std::uint32_t payload_size =
+                         DecodePayloadSize(header_buffer_);
+                     if (payload_size > shared::kMaxEnvelopePayloadSize) {
+                       std::error_code close_error;
+                       tcp_socket_.close(close_error);
+                       tcp_connected_ = false;
+                       return;
+                     }
+                     ReadPayload(payload_size);
+                   });
 }
 
 void NetworkManager::ReadPayload(std::uint32_t payload_size) {
+  if (payload_size > shared::kMaxEnvelopePayloadSize) {
+    std::error_code close_error;
+    tcp_socket_.close(close_error);
+    tcp_connected_ = false;
+    return;
+  }
   payload_buffer_.assign(payload_size, 0);
   if (payload_size == 0U) {
-    std::vector<std::uint8_t> bytes(header_buffer_.begin(), header_buffer_.end());
+    std::vector<std::uint8_t> bytes(header_buffer_.begin(),
+                                    header_buffer_.end());
     HandleEnvelopePayload(bytes);
     ReadHeader();
     return;
   }
 
-  asio::async_read(
-      tcp_socket_, asio::buffer(payload_buffer_),
-      [this](const std::error_code& error, std::size_t /*read*/) {
-        if (error) {
-          return;
-        }
-        std::vector<std::uint8_t> bytes(header_buffer_.begin(), header_buffer_.end());
-        bytes.insert(bytes.end(), payload_buffer_.begin(), payload_buffer_.end());
-        HandleEnvelopePayload(bytes);
-        ReadHeader();
-      });
+  asio::async_read(tcp_socket_, asio::buffer(payload_buffer_),
+                   [this](const std::error_code& error, std::size_t /*read*/) {
+                     if (error) {
+                       return;
+                     }
+                     std::vector<std::uint8_t> bytes(header_buffer_.begin(),
+                                                     header_buffer_.end());
+                     bytes.insert(bytes.end(), payload_buffer_.begin(),
+                                  payload_buffer_.end());
+                     HandleEnvelopePayload(bytes);
+                     ReadHeader();
+                   });
 }
 
-void NetworkManager::HandleEnvelopePayload(const std::vector<std::uint8_t>& bytes) {
-  const std::optional<shared::Envelope> envelope = shared::DecodeEnvelope(bytes);
+void NetworkManager::HandleEnvelopePayload(
+    const std::vector<std::uint8_t>& bytes) {
+  const std::optional<shared::Envelope> envelope =
+      shared::DecodeEnvelope(bytes);
   if (!envelope.has_value()) {
+    return;
+  }
+  if (envelope->message_id == shared::SceneChannelHelloAck::kMessageId) {
+    const std::optional<shared::SceneChannelHelloAck> ack =
+        shared::DecodeMessage<shared::SceneChannelHelloAck>(envelope->payload);
+    if (!ack.has_value() || ack->kcp_conv != kcp_conv_) {
+      return;
+    }
+    if (ack->error_code == shared::ErrorCode::kOk) {
+      scene_channel_ready_ = true;
+      FlushSceneOutbound();
+    }
     return;
   }
   const std::optional<protocol::ClientMessage> message =
@@ -382,25 +445,51 @@ void NetworkManager::FlushWrites() {
       });
 }
 
+void NetworkManager::FlushSceneOutbound() {
+  if (!scene_channel_ready_ || kcp_ == nullptr) {
+    return;
+  }
+
+  while (!pending_scene_outbound_.empty()) {
+    OutboundMessage message = std::move(pending_scene_outbound_.front());
+    pending_scene_outbound_.pop_front();
+    SendSceneOutbound(message);
+  }
+}
+
 void NetworkManager::StartUdpReceive() {
   udp_socket_.async_receive_from(
       asio::buffer(udp_buffer_), udp_sender_endpoint_,
       [this](const std::error_code& error, std::size_t bytes_received) {
-        if (!error && scene_channel_ready_ && kcp_ != nullptr) {
-          if (ikcp_input(kcp_, reinterpret_cast<const char*>(udp_buffer_.data()),
-                         static_cast<long>(bytes_received)) >= 0) {
-            std::array<char, 2048> buffer{};
-            while (true) {
-              const int received =
-                  ikcp_recv(kcp_, buffer.data(), static_cast<int>(buffer.size()));
-              if (received < 0) {
-                break;
-              }
+        if (!error && udp_sender_endpoint_ == udp_server_endpoint_) {
+          std::vector<std::uint8_t> raw_bytes(
+              udp_buffer_.begin(),
+              udp_buffer_.begin() +
+                  static_cast<std::ptrdiff_t>(bytes_received));
+          const std::optional<shared::Envelope> raw_envelope =
+              shared::DecodeEnvelope(raw_bytes);
+          if (raw_envelope.has_value() &&
+              raw_envelope->message_id ==
+                  shared::SceneChannelHelloAck::kMessageId) {
+            HandleEnvelopePayload(raw_bytes);
+          } else if (scene_channel_ready_ && kcp_ != nullptr) {
+            const KcpSize received_size = static_cast<KcpSize>(bytes_received);
+            if (ikcp_input(kcp_,
+                           reinterpret_cast<const char*>(udp_buffer_.data()),
+                           received_size) >= 0) {
+              std::array<char, 2048> buffer{};
+              while (true) {
+                const int received = ikcp_recv(kcp_, buffer.data(),
+                                               static_cast<int>(buffer.size()));
+                if (received < 0) {
+                  break;
+                }
 
-              std::vector<std::uint8_t> bytes(
-                  buffer.begin(),
-                  buffer.begin() + static_cast<std::ptrdiff_t>(received));
-              HandleEnvelopePayload(bytes);
+                std::vector<std::uint8_t> bytes(
+                    buffer.begin(),
+                    buffer.begin() + static_cast<std::ptrdiff_t>(received));
+                HandleEnvelopePayload(bytes);
+              }
             }
           }
         }
@@ -415,10 +504,12 @@ void NetworkManager::StartUdpReceive() {
 void NetworkManager::StartKcpTick() {
   kcp_tick_timer_.expires_after(std::chrono::milliseconds(10));
   kcp_tick_timer_.async_wait([this](const std::error_code& error) {
-    if (error || !scene_channel_ready_ || kcp_ == nullptr) {
+    if (error || kcp_ == nullptr) {
       return;
     }
-    ikcp_update(kcp_, NowMs());
+    if (scene_channel_ready_) {
+      ikcp_update(kcp_, NowMs());
+    }
     StartKcpTick();
   });
 }
@@ -460,8 +551,7 @@ int NetworkManager::KcpOutput(const char* buffer, int length, ikcpcb* /*kcp*/,
   auto packet = std::make_shared<std::vector<std::uint8_t>>(
       buffer, buffer + static_cast<std::ptrdiff_t>(length));
   network_manager->udp_socket_.async_send_to(
-      asio::buffer(*packet),
-      network_manager->udp_server_endpoint_,
+      asio::buffer(*packet), network_manager->udp_server_endpoint_,
       [packet](const std::error_code& /*error*/, std::size_t /*written*/) {});
   return 0;
 }

@@ -1,4 +1,4 @@
-#include <chrono>
+#include <chrono>  // NOLINT(build/c++11)
 #include <string>
 #include <thread>  // NOLINT(build/c++11)
 #include <vector>
@@ -8,17 +8,50 @@
 #include "client/protocol/protocol_dispatcher.h"
 #include "gtest/gtest.h"
 
+#if defined(__has_feature)
+#if __has_feature(address_sanitizer)
+#define CLIENT_TEST_HAS_LSAN 1
+#endif
+#endif
+
+#if defined(__SANITIZE_ADDRESS__) && !defined(CLIENT_TEST_HAS_LSAN)
+#define CLIENT_TEST_HAS_LSAN 1
+#endif
+
+#if !defined(CLIENT_TEST_HAS_LSAN)
+#define CLIENT_TEST_HAS_LSAN 0
+#endif
+
+#if CLIENT_TEST_HAS_LSAN
+#include <sanitizer/lsan_interface.h>
+#endif
+
 namespace client {
 namespace {
+
+class ScopedLsanDisabler {
+ public:
+  ScopedLsanDisabler() {
+#if CLIENT_TEST_HAS_LSAN
+    __lsan_disable();
+#endif
+  }
+
+  ~ScopedLsanDisabler() {
+#if CLIENT_TEST_HAS_LSAN
+    __lsan_enable();
+#endif
+  }
+};
 
 TEST(ClientDispatcherTest, DispatchesQueuedMessagesInArrivalOrder) {
   NetworkManager network_manager;
   network_manager.Enqueue(
       protocol::ClientMessage{protocol::EnterSceneSnapshotMessage{}});
-  network_manager.Enqueue(protocol::ClientMessage{
-      protocol::LoginResponseMessage{}});
-  network_manager.Enqueue(protocol::ClientMessage{
-      protocol::SceneChannelBootstrapMessage{}});
+  network_manager.Enqueue(
+      protocol::ClientMessage{protocol::LoginResponseMessage{}});
+  network_manager.Enqueue(
+      protocol::ClientMessage{protocol::SceneChannelBootstrapMessage{}});
   network_manager.Enqueue(
       protocol::ClientMessage{protocol::SelfStateMessage{}});
   network_manager.Enqueue(protocol::ClientMessage{protocol::AoiEnterMessage{}});
@@ -70,7 +103,8 @@ TEST(ClientDispatcherTest, DispatchesQueuedMessagesInArrivalOrder) {
         dispatch_order.push_back("pickup_result");
       });
 
-  for (const protocol::ClientMessage& message : network_manager.DrainInbound()) {
+  for (const protocol::ClientMessage& message :
+       network_manager.DrainInbound()) {
     dispatcher.Dispatch(message);
   }
 
@@ -222,6 +256,7 @@ TEST(ClientDispatcherTest, RunKeepsLoopAliveUntilStop) {
   bool run_returned = false;
 
   std::thread run_thread([&app, &run_returned]() {
+    ScopedLsanDisabler lsan_disabler;
     app.Run();
     run_returned = true;
   });

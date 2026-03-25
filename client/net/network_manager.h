@@ -16,7 +16,7 @@
 #include "asio/ip/udp.hpp"
 #include "asio/steady_timer.hpp"
 #include "client/protocol/client_message.h"
-#include "ikcp.h"
+#include "ikcp.h"  // NOLINT(build/include_subdir)
 
 namespace client {
 
@@ -51,15 +51,16 @@ class NetworkManager {
 
   void ConnectTcp();
   void ConfigureSceneChannel(const shared::SceneChannelBootstrap& bootstrap);
+  void SendSceneHello();
   void ReadHeader();
   void ReadPayload(std::uint32_t payload_size);
   void HandleEnvelopePayload(const std::vector<std::uint8_t>& bytes);
   void FlushWrites();
+  void FlushSceneOutbound();
   void StartUdpReceive();
   void StartKcpTick();
   void SendSceneOutbound(const OutboundMessage& message);
-  static int KcpOutput(const char* buffer, int length, ikcpcb* kcp,
-                       void* user);
+  static int KcpOutput(const char* buffer, int length, ikcpcb* kcp, void* user);
 
   NetworkConfig config_;
   asio::io_context io_context_;
@@ -80,11 +81,13 @@ class NetworkManager {
   ikcpcb* kcp_ = nullptr;
   std::vector<Message> inbound_messages_;
   std::deque<std::vector<std::uint8_t>> pending_writes_;
+  std::deque<OutboundMessage> pending_scene_outbound_;
   std::array<std::uint8_t, 6> header_buffer_{};
   std::array<std::uint8_t, 2048> udp_buffer_{};
   std::vector<std::uint8_t> payload_buffer_;
   asio::ip::udp::endpoint udp_server_endpoint_;
   asio::ip::udp::endpoint udp_sender_endpoint_;
+  std::string scene_session_token_;
 };
 
 }  // namespace client

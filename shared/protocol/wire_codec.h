@@ -1,15 +1,18 @@
 #ifndef SHARED_PROTOCOL_WIRE_CODEC_H_
 #define SHARED_PROTOCOL_WIRE_CODEC_H_
 
-#include <bit>
+// clang-format off
 #include <cstddef>
 #include <cstdint>
+
+#include <bit>  // NOLINT(build/include_order)
 #include <optional>
-#include <span>
+#include <span>  // NOLINT(build/include_order)
 #include <string>
 #include <type_traits>
 #include <utility>
 #include <vector>
+// clang-format on
 
 #include "shared/protocol/auth_messages.h"
 #include "shared/protocol/combat_messages.h"
@@ -22,6 +25,8 @@ struct Envelope {
   MessageId message_id = MessageId::kLoginRequest;
   std::vector<std::uint8_t> payload;
 };
+
+inline constexpr std::uint32_t kMaxEnvelopePayloadSize = 64U * 1024U;
 
 namespace detail {
 
@@ -103,8 +108,8 @@ class BufferReader {
     Unsigned value = 0;
     for (std::size_t index = 0; index < sizeof(Unsigned); ++index) {
       value = static_cast<Unsigned>(
-          value | (static_cast<Unsigned>(bytes_[cursor_ + index])
-                   << (index * 8U)));
+          value |
+          (static_cast<Unsigned>(bytes_[cursor_ + index]) << (index * 8U)));
     }
     cursor_ += sizeof(Unsigned);
     return static_cast<T>(value);
@@ -124,9 +129,9 @@ class BufferReader {
       return std::nullopt;
     }
 
-    std::string value(bytes_.begin() + static_cast<std::ptrdiff_t>(cursor_),
-                      bytes_.begin() +
-                          static_cast<std::ptrdiff_t>(cursor_ + *size));
+    std::string value(
+        bytes_.begin() + static_cast<std::ptrdiff_t>(cursor_),
+        bytes_.begin() + static_cast<std::ptrdiff_t>(cursor_ + *size));
     cursor_ += *size;
     return value;
   }
@@ -194,18 +199,23 @@ inline std::vector<std::uint8_t> EncodeEnvelope(
     MessageId message_id, std::span<const std::uint8_t> payload) {
   detail::BufferWriter writer;
   writer.WriteIntegral(message_id);
-  writer.WriteIntegral<std::uint32_t>(static_cast<std::uint32_t>(payload.size()));
+  writer.WriteIntegral<std::uint32_t>(
+      static_cast<std::uint32_t>(payload.size()));
   std::vector<std::uint8_t> bytes = writer.TakeBytes();
   bytes.insert(bytes.end(), payload.begin(), payload.end());
   return bytes;
 }
 
-inline std::optional<Envelope> DecodeEnvelope(std::span<const std::uint8_t> bytes) {
+inline std::optional<Envelope> DecodeEnvelope(
+    std::span<const std::uint8_t> bytes) {
   detail::BufferReader reader(bytes);
   const std::optional<MessageId> message_id = reader.ReadIntegral<MessageId>();
   const std::optional<std::uint32_t> payload_size =
       reader.ReadIntegral<std::uint32_t>();
   if (!message_id.has_value() || !payload_size.has_value()) {
+    return std::nullopt;
+  }
+  if (*payload_size > kMaxEnvelopePayloadSize) {
     return std::nullopt;
   }
 
@@ -217,8 +227,8 @@ inline std::optional<Envelope> DecodeEnvelope(std::span<const std::uint8_t> byte
 
   Envelope envelope;
   envelope.message_id = *message_id;
-  envelope.payload.assign(bytes.begin() + static_cast<std::ptrdiff_t>(kHeaderSize),
-                          bytes.end());
+  envelope.payload.assign(
+      bytes.begin() + static_cast<std::ptrdiff_t>(kHeaderSize), bytes.end());
   return envelope;
 }
 
@@ -237,11 +247,13 @@ inline std::vector<std::uint8_t> EncodeMessage(const LoginRequest& message) {
 }
 
 template <>
-inline std::optional<LoginRequest> DecodeMessage(std::span<const std::uint8_t> payload) {
+inline std::optional<LoginRequest> DecodeMessage(
+    std::span<const std::uint8_t> payload) {
   detail::BufferReader reader(payload);
   const std::optional<std::string> account_name = reader.ReadString();
   const std::optional<std::string> password = reader.ReadString();
-  if (!account_name.has_value() || !password.has_value() || !reader.consumed_all()) {
+  if (!account_name.has_value() || !password.has_value() ||
+      !reader.consumed_all()) {
     return std::nullopt;
   }
   return LoginRequest{*account_name, *password};
@@ -261,7 +273,8 @@ inline std::optional<LoginResponse> DecodeMessage(
   detail::BufferReader reader(payload);
   const std::optional<ErrorCode> error_code = reader.ReadIntegral<ErrorCode>();
   const std::optional<PlayerId> player_id = reader.ReadPlayerId();
-  if (!error_code.has_value() || !player_id.has_value() || !reader.consumed_all()) {
+  if (!error_code.has_value() || !player_id.has_value() ||
+      !reader.consumed_all()) {
     return std::nullopt;
   }
   return LoginResponse{*error_code, *player_id};
@@ -291,17 +304,64 @@ inline std::optional<SceneChannelBootstrap> DecodeMessage(
   const std::optional<std::uint16_t> udp_port =
       reader.ReadIntegral<std::uint16_t>();
   const std::optional<std::string> session_token = reader.ReadString();
-  if (!player_id.has_value() || !scene_id.has_value() || !kcp_conv.has_value() ||
-      !udp_port.has_value() || !session_token.has_value() ||
-      !reader.consumed_all()) {
+  if (!player_id.has_value() || !scene_id.has_value() ||
+      !kcp_conv.has_value() || !udp_port.has_value() ||
+      !session_token.has_value() || !reader.consumed_all()) {
     return std::nullopt;
   }
-  return SceneChannelBootstrap{
-      *player_id, *scene_id, *kcp_conv, *udp_port, *session_token};
+  return SceneChannelBootstrap{*player_id, *scene_id, *kcp_conv, *udp_port,
+                               *session_token};
 }
 
 template <>
-inline std::vector<std::uint8_t> EncodeMessage(const EnterSceneRequest& message) {
+inline std::vector<std::uint8_t> EncodeMessage(
+    const SceneChannelHello& message) {
+  detail::BufferWriter writer;
+  writer.WriteIntegral(message.kcp_conv);
+  writer.WriteString(message.session_token);
+  return writer.TakeBytes();
+}
+
+template <>
+inline std::optional<SceneChannelHello> DecodeMessage(
+    std::span<const std::uint8_t> payload) {
+  detail::BufferReader reader(payload);
+  const std::optional<std::uint32_t> kcp_conv =
+      reader.ReadIntegral<std::uint32_t>();
+  const std::optional<std::string> session_token = reader.ReadString();
+  if (!kcp_conv.has_value() || !session_token.has_value() ||
+      !reader.consumed_all()) {
+    return std::nullopt;
+  }
+  return SceneChannelHello{*kcp_conv, *session_token};
+}
+
+template <>
+inline std::vector<std::uint8_t> EncodeMessage(
+    const SceneChannelHelloAck& message) {
+  detail::BufferWriter writer;
+  writer.WriteIntegral(message.kcp_conv);
+  writer.WriteIntegral(message.error_code);
+  return writer.TakeBytes();
+}
+
+template <>
+inline std::optional<SceneChannelHelloAck> DecodeMessage(
+    std::span<const std::uint8_t> payload) {
+  detail::BufferReader reader(payload);
+  const std::optional<std::uint32_t> kcp_conv =
+      reader.ReadIntegral<std::uint32_t>();
+  const std::optional<ErrorCode> error_code = reader.ReadIntegral<ErrorCode>();
+  if (!kcp_conv.has_value() || !error_code.has_value() ||
+      !reader.consumed_all()) {
+    return std::nullopt;
+  }
+  return SceneChannelHelloAck{*kcp_conv, *error_code};
+}
+
+template <>
+inline std::vector<std::uint8_t> EncodeMessage(
+    const EnterSceneRequest& message) {
   detail::BufferWriter writer;
   writer.WritePlayerId(message.player_id);
   writer.WriteIntegral(message.scene_id);
@@ -315,7 +375,8 @@ inline std::optional<EnterSceneRequest> DecodeMessage(
   const std::optional<PlayerId> player_id = reader.ReadPlayerId();
   const std::optional<std::uint32_t> scene_id =
       reader.ReadIntegral<std::uint32_t>();
-  if (!player_id.has_value() || !scene_id.has_value() || !reader.consumed_all()) {
+  if (!player_id.has_value() || !scene_id.has_value() ||
+      !reader.consumed_all()) {
     return std::nullopt;
   }
   return EnterSceneRequest{*player_id, *scene_id};
@@ -390,7 +451,8 @@ inline std::optional<MoveRequest> DecodeMessage(
     std::span<const std::uint8_t> payload) {
   detail::BufferReader reader(payload);
   const std::optional<EntityId> entity_id = reader.ReadEntityId();
-  const std::optional<ScenePosition> target_position = reader.ReadScenePosition();
+  const std::optional<ScenePosition> target_position =
+      reader.ReadScenePosition();
   const std::optional<std::uint32_t> client_seq =
       reader.ReadIntegral<std::uint32_t>();
   const std::optional<std::uint64_t> client_timestamp_ms =
@@ -400,7 +462,8 @@ inline std::optional<MoveRequest> DecodeMessage(
       !reader.consumed_all()) {
     return std::nullopt;
   }
-  return MoveRequest{*entity_id, *target_position, *client_seq, *client_timestamp_ms};
+  return MoveRequest{*entity_id, *target_position, *client_seq,
+                     *client_timestamp_ms};
 }
 
 template <>
@@ -506,7 +569,8 @@ inline std::optional<InventoryDelta> DecodeMessage(
   delta.player_id = *player_id;
   delta.slots.reserve(*slot_count);
   for (std::uint32_t index = 0; index < *slot_count; ++index) {
-    const std::optional<InventorySlotDelta> slot = reader.ReadInventorySlotDelta();
+    const std::optional<InventorySlotDelta> slot =
+        reader.ReadInventorySlotDelta();
     if (!slot.has_value()) {
       return std::nullopt;
     }
@@ -533,7 +597,8 @@ inline std::optional<SelfState> DecodeMessage(
   detail::BufferReader reader(payload);
   const std::optional<EntityId> entity_id = reader.ReadEntityId();
   const std::optional<ScenePosition> position = reader.ReadScenePosition();
-  if (!entity_id.has_value() || !position.has_value() || !reader.consumed_all()) {
+  if (!entity_id.has_value() || !position.has_value() ||
+      !reader.consumed_all()) {
     return std::nullopt;
   }
   return SelfState{*entity_id, *position};
@@ -577,7 +642,8 @@ inline std::optional<AoiLeave> DecodeMessage(
 }
 
 template <>
-inline std::vector<std::uint8_t> EncodeMessage(const CastSkillRequest& message) {
+inline std::vector<std::uint8_t> EncodeMessage(
+    const CastSkillRequest& message) {
   detail::BufferWriter writer;
   writer.WriteEntityId(message.caster_entity_id);
   writer.WriteEntityId(message.target_entity_id);
@@ -597,7 +663,8 @@ inline std::optional<CastSkillRequest> DecodeMessage(
   const std::optional<std::uint32_t> client_seq =
       reader.ReadIntegral<std::uint32_t>();
   if (!caster_entity_id.has_value() || !target_entity_id.has_value() ||
-      !skill_id.has_value() || !client_seq.has_value() || !reader.consumed_all()) {
+      !skill_id.has_value() || !client_seq.has_value() ||
+      !reader.consumed_all()) {
     return std::nullopt;
   }
   return CastSkillRequest{*caster_entity_id, *target_entity_id, *skill_id,
@@ -630,12 +697,13 @@ inline std::optional<CastSkillResult> DecodeMessage(
   const std::optional<std::uint32_t> client_seq =
       reader.ReadIntegral<std::uint32_t>();
   if (!caster_entity_id.has_value() || !target_entity_id.has_value() ||
-      !skill_id.has_value() || !error_code.has_value() || !hp_delta.has_value() ||
-      !client_seq.has_value() || !reader.consumed_all()) {
+      !skill_id.has_value() || !error_code.has_value() ||
+      !hp_delta.has_value() || !client_seq.has_value() ||
+      !reader.consumed_all()) {
     return std::nullopt;
   }
   return CastSkillResult{*caster_entity_id, *target_entity_id, *skill_id,
-                         *error_code, *hp_delta, *client_seq};
+                         *error_code,       *hp_delta,         *client_seq};
 }
 
 }  // namespace shared
