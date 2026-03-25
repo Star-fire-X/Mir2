@@ -217,6 +217,7 @@ TEST(ClientDispatcherTest, SameSceneSnapshotReplacesExistingSceneViews) {
 }
 
 TEST(ClientDispatcherTest, RunKeepsLoopAliveUntilStop) {
+  ASSERT_EQ(setenv("SDL_VIDEODRIVER", "dummy", 1), 0);
   GameApp app;
   bool run_returned = false;
 

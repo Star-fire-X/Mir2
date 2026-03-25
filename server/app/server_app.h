@@ -41,6 +41,16 @@ class ServerApp {
       std::variant<shared::EnterSceneSnapshot, SelfStateEvent, AoiEnterEvent,
                    AoiLeaveEvent, shared::InventoryDelta>;
 
+  struct CastSkillOutcome {
+    shared::CastSkillResult result{};
+    std::vector<OutboundEvent> events;
+  };
+
+  struct PickupOutcome {
+    shared::PickupResult result{};
+    std::vector<OutboundEvent> events;
+  };
+
   explicit ServerApp(const ConfigManager& config_manager);
 
   bool Init();
@@ -56,6 +66,11 @@ class ServerApp {
       float now_seconds);
   std::vector<OutboundEvent> HandlePickup(
       const Session* session, const shared::PickupRequest& pickup_request);
+  CastSkillOutcome ResolveCastSkill(
+      Session* session, const shared::CastSkillRequest& cast_skill_request,
+      float now_seconds);
+  PickupOutcome ResolvePickup(const Session* session,
+                              const shared::PickupRequest& pickup_request);
 
  private:
   struct MonsterRuntimeTemplate {

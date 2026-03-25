@@ -48,7 +48,7 @@ add_library(server_transport STATIC
 
 target_include_directories(server_transport PUBLIC ${PROJECT_SOURCE_DIR})
 target_link_libraries(server_transport PUBLIC asio_headers server_config server_runtime
-                                             shared_protocol)
+                                             kcp_vendor shared_protocol)
 set_project_warnings(server_transport)
 
 add_library(server_gm STATIC

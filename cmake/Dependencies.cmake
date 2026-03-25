@@ -15,6 +15,19 @@ target_include_directories(asio_headers SYSTEM INTERFACE
                            ${asio_SOURCE_DIR}/asio/include)
 target_compile_definitions(asio_headers INTERFACE ASIO_STANDALONE)
 
+FetchContent_Declare(
+  kcp
+  URL https://github.com/skywind3000/kcp/archive/refs/tags/1.7.zip)
+FetchContent_MakeAvailable(kcp)
+
+add_library(kcp_vendor STATIC ${kcp_SOURCE_DIR}/ikcp.c)
+target_include_directories(kcp_vendor SYSTEM PUBLIC ${kcp_SOURCE_DIR})
+
+FetchContent_Declare(
+  sdl2
+  URL https://github.com/libsdl-org/SDL/archive/refs/tags/release-2.32.10.zip)
+FetchContent_MakeAvailable(sdl2)
+
 if(BUILD_TESTING)
   FetchContent_Declare(
     googletest

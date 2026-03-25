@@ -1,6 +1,7 @@
 #ifndef SERVER_RUNTIME_SERVER_RUNTIME_H_
 #define SERVER_RUNTIME_SERVER_RUNTIME_H_
 
+#include <array>
 #include <atomic>
 #include <condition_variable>
 #include <cstdint>
@@ -10,11 +11,14 @@
 #include <queue>
 #include <string>
 #include <thread>  // NOLINT(build/c++11)
+#include <unordered_map>
 #include <vector>
 
 #include "asio/executor_work_guard.hpp"
 #include "asio/io_context.hpp"
 #include "asio/ip/tcp.hpp"
+#include "asio/ip/udp.hpp"
+#include "asio/steady_timer.hpp"
 #include "server/app/server_app.h"
 
 namespace server {
@@ -40,9 +44,12 @@ class ServerRuntime {
 
  private:
   class ClientConnection;
+  class KcpSceneChannel;
   using WorkGuard = asio::executor_work_guard<asio::io_context::executor_type>;
 
   void StartAccept();
+  void StartUdpReceive();
+  void StartKcpTick();
   void LogicLoop();
   void EnqueueLogicTask(std::function<void()> task);
   void HandleLogin(const std::shared_ptr<ClientConnection>& connection,
@@ -50,8 +57,14 @@ class ServerRuntime {
   void HandleEnterScene(
       const std::shared_ptr<ClientConnection>& connection,
       const shared::EnterSceneRequest& enter_scene_request);
+  void HandleMove(const std::shared_ptr<KcpSceneChannel>& channel,
+                  const shared::MoveRequest& move_request);
+  void HandleCastSkill(const std::shared_ptr<KcpSceneChannel>& channel,
+                       const shared::CastSkillRequest& cast_skill_request);
+  void HandlePickup(const std::shared_ptr<KcpSceneChannel>& channel,
+                    const shared::PickupRequest& pickup_request);
   void SendOutboundEvents(
-      const std::shared_ptr<ClientConnection>& connection,
+      const std::shared_ptr<KcpSceneChannel>& channel,
       const std::vector<ServerApp::OutboundEvent>& events);
 
   Options options_;
@@ -59,12 +72,19 @@ class ServerRuntime {
   asio::io_context io_context_;
   std::unique_ptr<WorkGuard> work_guard_;
   asio::ip::tcp::acceptor acceptor_;
+  asio::ip::udp::socket udp_socket_;
+  asio::steady_timer kcp_tick_timer_;
   std::thread io_thread_;
   std::thread logic_thread_;
   mutable std::mutex state_mutex_;
   std::mutex queue_mutex_;
+  std::mutex channel_mutex_;
   std::condition_variable queue_cv_;
   std::queue<std::function<void()>> logic_tasks_;
+  std::unordered_map<std::uint32_t, std::shared_ptr<KcpSceneChannel>>
+      scene_channels_;
+  std::array<std::uint8_t, 2048> udp_read_buffer_{};
+  asio::ip::udp::endpoint udp_remote_endpoint_;
   std::atomic<bool> running_{false};
   std::atomic<std::uint64_t> next_session_id_{1};
 };

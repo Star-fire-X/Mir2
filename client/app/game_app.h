@@ -9,6 +9,7 @@
 #include "client/debug/dev_panel.h"
 #include "client/model/model_root.h"
 #include "client/net/network_manager.h"
+#include "client/platform/sdl_runtime.h"
 #include "client/protocol/protocol_dispatcher.h"
 #include "client/scene/scene_manager.h"
 #include "client/ui/ui_manager.h"
@@ -17,7 +18,7 @@ namespace client {
 
 class GameApp {
  public:
-  GameApp();
+  explicit GameApp(NetworkConfig config = {});
   ~GameApp();
 
   void Run();
@@ -58,6 +59,7 @@ class GameApp {
   void AppendProtocolSummary(std::string summary);
 
   NetworkManager network_manager_;
+  SdlRuntime sdl_runtime_;
   ProtocolDispatcher protocol_dispatcher_;
   ModelRoot model_root_;
   SceneManager scene_manager_;
@@ -68,7 +70,9 @@ class GameApp {
   bool running_ = false;
   bool login_requested_ = false;
   bool enter_scene_requested_ = false;
+  std::uint32_t next_client_seq_ = 1;
   shared::PlayerId player_id_{};
+  shared::EntityId selected_entity_id_{};
   std::vector<std::string> recent_protocol_summaries_;
 };
 

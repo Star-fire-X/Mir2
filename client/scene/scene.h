@@ -50,6 +50,15 @@ class Scene {
 
   [[nodiscard]] std::size_t ViewCount() const { return views_.size(); }
 
+  [[nodiscard]] std::vector<const EntityView*> ViewList() const {
+    std::vector<const EntityView*> view_list;
+    view_list.reserve(views_.size());
+    for (const auto& [_, view] : views_) {
+      view_list.push_back(view.get());
+    }
+    return view_list;
+  }
+
  private:
   struct EntityIdHash {
     std::size_t operator()(const shared::EntityId& entity_id) const noexcept {
