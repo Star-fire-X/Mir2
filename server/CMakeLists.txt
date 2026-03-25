@@ -23,6 +23,12 @@ if(ENTT_INCLUDE_DIRS)
 endif()
 set_project_warnings(server_scene)
 
+add_library(server_log STATIC
+  core/log/logger.cc)
+
+target_include_directories(server_log PUBLIC ${PROJECT_SOURCE_DIR})
+set_project_warnings(server_log)
+
 add_library(server_runtime STATIC
   skill/skill_system.cc
   battle/battle_system.cc
@@ -33,8 +39,15 @@ add_library(server_runtime STATIC
   protocol/protocol_dispatcher.cc)
 
 target_include_directories(server_runtime PUBLIC ${PROJECT_SOURCE_DIR})
-target_link_libraries(server_runtime PUBLIC server_scene server_db)
+target_link_libraries(server_runtime PUBLIC server_scene server_db server_log)
 set_project_warnings(server_runtime)
+
+add_library(server_gm STATIC
+  gm/gm_command_handler.cc)
+
+target_include_directories(server_gm PUBLIC ${PROJECT_SOURCE_DIR})
+target_link_libraries(server_gm PUBLIC server_runtime)
+set_project_warnings(server_gm)
 
 add_library(server_db STATIC
   db/player_repository.cc
@@ -54,6 +67,10 @@ set_project_warnings(server_config)
 add_executable(server_app app/server_main.cc app/server_app.cc)
 target_link_libraries(server_app PRIVATE server_config)
 set_project_warnings(server_app)
+
+add_executable(proto_dump ../tools/proto_dump/proto_dump_main.cc)
+target_include_directories(proto_dump PRIVATE ${PROJECT_SOURCE_DIR})
+set_project_warnings(proto_dump)
 
 if(BUILD_TESTING)
   add_test(NAME ServerAppSmokeCheck COMMAND $<TARGET_FILE:server_app>)
@@ -101,8 +118,21 @@ if(BUILD_TESTING)
     tests/log/logger_test.cc)
 
   target_include_directories(logger_test PRIVATE ${PROJECT_SOURCE_DIR})
-  target_link_libraries(logger_test PRIVATE GTest::gtest_main)
+  target_link_libraries(
+    logger_test
+    PRIVATE server_log
+            GTest::gtest_main)
   set_project_warnings(logger_test)
+
+  add_executable(
+    gm_command_test
+    tests/gm/gm_command_test.cc)
+  target_include_directories(gm_command_test PRIVATE ${PROJECT_SOURCE_DIR})
+  target_link_libraries(
+    gm_command_test
+    PRIVATE server_gm
+            GTest::gtest_main)
+  set_project_warnings(gm_command_test)
 
   add_executable(
     server_bootstrap_test
@@ -257,12 +287,24 @@ if(BUILD_TESTING)
             GTest::gtest_main)
   set_project_warnings(pickup_idempotency_test)
 
+  add_executable(
+    pickup_race_guard_test
+    tests/drop/pickup_race_guard_test.cc)
+  target_include_directories(
+    pickup_race_guard_test PRIVATE ${PROJECT_SOURCE_DIR})
+  target_link_libraries(
+    pickup_race_guard_test
+    PRIVATE server_runtime
+            GTest::gtest_main)
+  set_project_warnings(pickup_race_guard_test)
+
   include(GoogleTest)
   gtest_discover_tests(inventory_test)
   gtest_discover_tests(player_repository_test)
   gtest_discover_tests(save_service_test)
   gtest_discover_tests(config_validator_test)
   gtest_discover_tests(logger_test)
+  gtest_discover_tests(gm_command_test)
   gtest_discover_tests(server_bootstrap_test)
   gtest_discover_tests(shared_contract_test)
   gtest_discover_tests(scene_spawn_test)
@@ -278,4 +320,5 @@ if(BUILD_TESTING)
   gtest_discover_tests(buff_expire_test)
   gtest_discover_tests(monster_ai_test)
   gtest_discover_tests(pickup_idempotency_test)
+  gtest_discover_tests(pickup_race_guard_test)
 endif()

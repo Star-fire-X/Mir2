@@ -3,6 +3,7 @@
 
 #include <cstdint>
 
+#include "shared/protocol/message_ids.h"
 #include "shared/types/entity_id.h"
 #include "shared/types/player_id.h"
 
@@ -13,6 +14,7 @@ struct TraceContext {
   shared::PlayerId playerId{};
   shared::EntityId entityId{};
   std::uint32_t clientSeq{};
+  shared::MessageId messageId{};
   auto operator<=>(const TraceContext&) const = default;
 };
 

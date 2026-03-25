@@ -1,7 +1,9 @@
 #include "server/protocol/protocol_dispatcher.h"
 
+#include <cstdint>
 #include <optional>
 
+#include "server/core/log/logger.h"
 #include "server/db/save_service.h"
 #include "server/entity/entity_factory.h"
 #include "server/net/session.h"
@@ -21,6 +23,8 @@ ProtocolDispatcher::ProtocolDispatcher(PlayerManager* player_manager,
                                        SceneManager* scene_manager)
     : player_manager_(player_manager), scene_manager_(scene_manager) {}
 
+void ProtocolDispatcher::SetLogger(Logger* logger) { logger_ = logger; }
+
 shared::LoginResponse ProtocolDispatcher::HandleLogin(
     Session* session, const shared::LoginRequest& login_request) {
   if (session == nullptr) {
@@ -37,6 +41,17 @@ shared::LoginResponse ProtocolDispatcher::HandleLogin(
 
   session->Authenticate(player_id);
   session->SelectCharacter();
+
+  if (logger_ != nullptr) {
+    logger_->SetTraceContext(TraceContext{
+        next_trace_id_value_++,
+        player_id,
+        {},
+        0,
+        shared::MessageId::kLoginRequest,
+    });
+    logger_->Log("login_request");
+  }
 
   return shared::LoginResponse{
       shared::ErrorCode::kOk,
@@ -69,6 +84,17 @@ std::optional<shared::EnterSceneSnapshot> ProtocolDispatcher::HandleEnterScene(
   player->ResumeOperations();
   session->EnterScene();
 
+  if (logger_ != nullptr) {
+    logger_->SetTraceContext(TraceContext{
+        next_trace_id_value_++,
+        enter_scene_request.player_id,
+        controlled_entity_id,
+        0,
+        shared::MessageId::kEnterSceneRequest,
+    });
+    logger_->Log("enter_scene_request");
+  }
+
   AoiSystem aoi_system;
   return aoi_system.BuildEnterSceneSnapshot(
       enter_scene_request.player_id, controlled_entity_id,
@@ -100,6 +126,16 @@ bool ProtocolDispatcher::HandleMoveRequest(
   }
 
   player->SubmitMove(scene, move_request);
+  if (logger_ != nullptr) {
+    logger_->SetTraceContext(TraceContext{
+        next_trace_id_value_++,
+        *session->player_id(),
+        move_request.entity_id,
+        move_request.client_seq,
+        shared::MessageId::kMoveRequest,
+    });
+    logger_->Log("move_request");
+  }
   return true;
 }
 
