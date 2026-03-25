@@ -48,6 +48,7 @@ void GameApp::HandleEnterSceneSnapshot(
     scene_manager_.Remove(previous_scene_id);
   }
 
+  scene_manager_.Remove(snapshot.scene_id);
   Scene& scene = scene_manager_.Emplace(snapshot.scene_id);
   model_root_.player_model().ApplyEnterSceneSnapshot(snapshot);
   model_root_.scene_state_model().SetSceneId(snapshot.scene_id);
