@@ -25,8 +25,9 @@ class ProtocolDispatcher {
 
   shared::LoginResponse HandleLogin(Session* session,
                                     const shared::LoginRequest& login_request);
-  bool CanEnterScene(const Session* session,
-                     const shared::EnterSceneRequest& enter_scene_request) const;
+  bool CanEnterScene(
+      const Session* session,
+      const shared::EnterSceneRequest& enter_scene_request) const;
 
   std::optional<shared::EnterSceneSnapshot> HandleEnterScene(
       Session* session, const shared::EnterSceneRequest& enter_scene_request);

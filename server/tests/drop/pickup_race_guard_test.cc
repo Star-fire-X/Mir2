@@ -30,22 +30,22 @@ TEST(PickupRaceGuardTest, FirstPickupWinsAndSecondPlayerSeesDropMissing) {
       &scene, shared::ScenePosition{1.0F, 2.0F}, {DropItemSpec{5001, 1}});
   ASSERT_EQ(drop_entity_ids.size(), 1U);
 
-  const shared::PickupResult first_result = drop_system.HandlePickup(
-      &scene, &first_player,
-      shared::PickupRequest{
-          first_player.data().identity.player_id,
-          drop_entity_ids[0],
-          41,
-      },
-      20);
-  const shared::PickupResult second_result = drop_system.HandlePickup(
-      &scene, &second_player,
-      shared::PickupRequest{
-          second_player.data().identity.player_id,
-          drop_entity_ids[0],
-          42,
-      },
-      20);
+  const shared::PickupResult first_result =
+      drop_system.HandlePickup(&scene, &first_player,
+                               shared::PickupRequest{
+                                   first_player.data().identity.player_id,
+                                   drop_entity_ids[0],
+                                   41,
+                               },
+                               20);
+  const shared::PickupResult second_result =
+      drop_system.HandlePickup(&scene, &second_player,
+                               shared::PickupRequest{
+                                   second_player.data().identity.player_id,
+                                   drop_entity_ids[0],
+                                   42,
+                               },
+                               20);
 
   EXPECT_EQ(first_result.error_code, shared::ErrorCode::kOk);
   EXPECT_EQ(second_result.error_code, shared::ErrorCode::kDropNotFound);

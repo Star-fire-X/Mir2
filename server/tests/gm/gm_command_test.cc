@@ -52,15 +52,16 @@ TEST(GmCommandTest, AddItemAndForceSaveQueueSnapshotFromLiveSceneState) {
   ASSERT_TRUE(entity.has_value());
   scene.registry().get<ecs::PositionComponent>(*entity).position = {5.0F, 6.0F};
 
-  ASSERT_TRUE(
-      handler.AddItem(&player, /*item_template_id=*/5001, /*item_count=*/2, 20));
+  ASSERT_TRUE(handler.AddItem(&player, /*item_template_id=*/5001,
+                              /*item_count=*/2, 20));
   ASSERT_TRUE(handler.ForceSave(&player, &scene, &save_service));
 
   ASSERT_TRUE(save_service.HasQueuedSnapshot());
   ASSERT_TRUE(player.data().inventory.slots()[0].has_value());
   EXPECT_EQ(player.data().inventory.slots()[0]->item_template_id, 5001U);
   EXPECT_EQ(player.data().inventory.slots()[0]->item_count, 2U);
-  EXPECT_EQ(save_service.queued_snapshot().data.last_scene_snapshot.scene_id, 1U);
+  EXPECT_EQ(save_service.queued_snapshot().data.last_scene_snapshot.scene_id,
+            1U);
   EXPECT_FLOAT_EQ(
       save_service.queued_snapshot().data.last_scene_snapshot.position.x, 5.0F);
   EXPECT_FLOAT_EQ(

@@ -7,6 +7,7 @@
 #include <variant>
 #include <vector>
 
+#include "server/battle/battle_system.h"
 #include "server/config/config_manager.h"
 #include "server/net/session.h"
 #include "server/player/player_manager.h"
@@ -15,7 +16,6 @@
 #include "server/scene/movement_system.h"
 #include "server/scene/scene_manager.h"
 #include "server/skill/skill_system.h"
-#include "server/battle/battle_system.h"
 #include "shared/protocol/auth_messages.h"
 #include "shared/protocol/scene_messages.h"
 #include "shared/types/entity_id.h"
@@ -37,9 +37,9 @@ class ServerApp {
     shared::EntityId entity_id{};
   };
 
-  using OutboundEvent = std::variant<shared::EnterSceneSnapshot, SelfStateEvent,
-                                     AoiEnterEvent, AoiLeaveEvent,
-                                     shared::InventoryDelta>;
+  using OutboundEvent =
+      std::variant<shared::EnterSceneSnapshot, SelfStateEvent, AoiEnterEvent,
+                   AoiLeaveEvent, shared::InventoryDelta>;
 
   explicit ServerApp(const ConfigManager& config_manager);
 
@@ -48,9 +48,9 @@ class ServerApp {
                               const shared::LoginRequest& login_request);
   std::vector<OutboundEvent> EnterScene(
       Session* session, const shared::EnterSceneRequest& enter_scene_request);
-  std::vector<OutboundEvent> HandleMove(
-      const Session* session, const shared::MoveRequest& move_request,
-      float delta_seconds);
+  std::vector<OutboundEvent> HandleMove(const Session* session,
+                                        const shared::MoveRequest& move_request,
+                                        float delta_seconds);
   std::vector<OutboundEvent> HandleCastSkill(
       Session* session, const shared::CastSkillRequest& cast_skill_request,
       float now_seconds);
@@ -75,8 +75,8 @@ class ServerApp {
       const std::optional<shared::ScenePosition>& previous_position);
   static std::vector<OutboundEvent> BuildEnterSceneEvents(
       const shared::EnterSceneSnapshot& snapshot);
-  static shared::InventoryDelta BuildInventoryDelta(
-      shared::PlayerId player_id, const Inventory& inventory);
+  static shared::InventoryDelta BuildInventoryDelta(shared::PlayerId player_id,
+                                                    const Inventory& inventory);
 
   const ConfigManager& config_manager_;
   PlayerManager player_manager_;
