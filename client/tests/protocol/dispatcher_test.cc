@@ -98,5 +98,65 @@ TEST(ClientDispatcherTest, RunFramePumpsQueuedNetworkMessagesInArrivalOrder) {
   EXPECT_TRUE(app.network_manager().Drain().empty());
 }
 
+TEST(ClientDispatcherTest, SameSceneSnapshotReplacesExistingSceneViews) {
+  GameApp app;
+
+  shared::EnterSceneSnapshot first_snapshot;
+  first_snapshot.player_id = shared::PlayerId{1};
+  first_snapshot.controlled_entity_id = shared::EntityId{1001};
+  first_snapshot.scene_id = 1;
+  first_snapshot.self_position = shared::ScenePosition{0.0F, 0.0F};
+  first_snapshot.visible_entities = {
+      shared::VisibleEntitySnapshot{
+          shared::EntityId{1001},
+          shared::VisibleEntityKind::kPlayer,
+          shared::ScenePosition{0.0F, 0.0F},
+      },
+      shared::VisibleEntitySnapshot{
+          shared::EntityId{2001},
+          shared::VisibleEntityKind::kMonster,
+          shared::ScenePosition{4.0F, 0.0F},
+      },
+      shared::VisibleEntitySnapshot{
+          shared::EntityId{3001},
+          shared::VisibleEntityKind::kDrop,
+          shared::ScenePosition{5.0F, 0.0F},
+      },
+  };
+
+  app.network_manager().Enqueue(protocol::ClientMessage{
+      protocol::EnterSceneSnapshotMessage{first_snapshot}});
+  app.RunFrame();
+
+  const Scene* scene = app.scene_manager().Find(1);
+  ASSERT_NE(scene, nullptr);
+  EXPECT_EQ(scene->ViewCount(), 3U);
+  ASSERT_NE(scene->FindView(shared::EntityId{2001}), nullptr);
+  ASSERT_NE(scene->FindView(shared::EntityId{3001}), nullptr);
+
+  shared::EnterSceneSnapshot replacement_snapshot = first_snapshot;
+  replacement_snapshot.visible_entities = {
+      shared::VisibleEntitySnapshot{
+          shared::EntityId{1001},
+          shared::VisibleEntityKind::kPlayer,
+          shared::ScenePosition{8.0F, 1.0F},
+      },
+  };
+  replacement_snapshot.self_position = shared::ScenePosition{8.0F, 1.0F};
+
+  app.network_manager().Enqueue(protocol::ClientMessage{
+      protocol::EnterSceneSnapshotMessage{replacement_snapshot}});
+  app.RunFrame();
+
+  scene = app.scene_manager().Find(1);
+  ASSERT_NE(scene, nullptr);
+  EXPECT_EQ(scene->ViewCount(), 1U);
+  EXPECT_EQ(scene->FindView(shared::EntityId{2001}), nullptr);
+  EXPECT_EQ(scene->FindView(shared::EntityId{3001}), nullptr);
+  EXPECT_EQ(app.model_root().scene_state_model().visible_entity_count(), 1U);
+  EXPECT_FLOAT_EQ(app.model_root().player_model().position().x, 8.0F);
+  EXPECT_FLOAT_EQ(app.model_root().player_model().position().y, 1.0F);
+}
+
 }  // namespace
 }  // namespace client

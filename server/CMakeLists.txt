@@ -52,7 +52,7 @@ target_include_directories(server_config PUBLIC ${PROJECT_SOURCE_DIR})
 set_project_warnings(server_config)
 
 add_executable(server_app app/server_main.cc app/server_app.cc)
-target_link_libraries(server_app PRIVATE server_config)
+target_link_libraries(server_app PRIVATE server_config server_runtime)
 set_project_warnings(server_app)
 
 if(BUILD_TESTING)
@@ -113,6 +113,7 @@ if(BUILD_TESTING)
   target_link_libraries(
     server_bootstrap_test
     PRIVATE server_config
+            server_runtime
             GTest::gtest_main)
   set_project_warnings(server_bootstrap_test)
 
@@ -257,6 +258,20 @@ if(BUILD_TESTING)
             GTest::gtest_main)
   set_project_warnings(pickup_idempotency_test)
 
+  add_executable(
+    closed_loop_integration_test
+    tests/integration/login_enter_move_combat_pickup_test.cc
+    app/server_app.cc)
+  target_include_directories(
+    closed_loop_integration_test PRIVATE ${PROJECT_SOURCE_DIR})
+  target_link_libraries(
+    closed_loop_integration_test
+    PRIVATE client_runtime
+            server_config
+            server_runtime
+            GTest::gtest_main)
+  set_project_warnings(closed_loop_integration_test)
+
   include(GoogleTest)
   gtest_discover_tests(inventory_test)
   gtest_discover_tests(player_repository_test)
@@ -278,4 +293,5 @@ if(BUILD_TESTING)
   gtest_discover_tests(buff_expire_test)
   gtest_discover_tests(monster_ai_test)
   gtest_discover_tests(pickup_idempotency_test)
+  gtest_discover_tests(closed_loop_integration_test)
 endif()

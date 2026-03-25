@@ -44,17 +44,16 @@ shared::LoginResponse ProtocolDispatcher::HandleLogin(
   };
 }
 
+bool ProtocolDispatcher::CanEnterScene(
+    const Session* session,
+    const shared::EnterSceneRequest& enter_scene_request) const {
+  return FindEnterScenePlayer(session, enter_scene_request) != nullptr;
+}
+
 std::optional<shared::EnterSceneSnapshot> ProtocolDispatcher::HandleEnterScene(
     Session* session, const shared::EnterSceneRequest& enter_scene_request) {
-  if (session == nullptr || !session->player_id().has_value()) {
-    return std::nullopt;
-  }
-  if (*session->player_id() != enter_scene_request.player_id) {
-    return std::nullopt;
-  }
-
-  Player* player = player_manager_->Find(enter_scene_request.player_id);
-  if (!IsBoundToSession(player, session)) {
+  Player* player = FindEnterScenePlayer(session, enter_scene_request);
+  if (player == nullptr) {
     return std::nullopt;
   }
 
@@ -144,6 +143,23 @@ std::optional<shared::EnterSceneSnapshot> ProtocolDispatcher::HandleReconnect(
   return HandleEnterScene(
       session, shared::EnterSceneRequest{
                    player_id, player->data().last_scene_snapshot.scene_id});
+}
+
+Player* ProtocolDispatcher::FindEnterScenePlayer(
+    const Session* session,
+    const shared::EnterSceneRequest& enter_scene_request) const {
+  if (session == nullptr || !session->player_id().has_value()) {
+    return nullptr;
+  }
+  if (*session->player_id() != enter_scene_request.player_id) {
+    return nullptr;
+  }
+
+  Player* player = player_manager_->Find(enter_scene_request.player_id);
+  if (!IsBoundToSession(player, session)) {
+    return nullptr;
+  }
+  return player;
 }
 
 CharacterData ProtocolDispatcher::BuildDefaultCharacter(
