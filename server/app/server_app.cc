@@ -80,7 +80,7 @@ std::vector<ServerApp::OutboundEvent> ServerApp::EnterScene(
 }
 
 std::vector<ServerApp::OutboundEvent> ServerApp::HandleMove(
-    Session* session, const shared::MoveRequest& move_request,
+    const Session* session, const shared::MoveRequest& move_request,
     float delta_seconds) {
   const PlayerAndScene player_and_scene = FindBoundPlayerAndScene(session);
   if (player_and_scene.player == nullptr || player_and_scene.scene == nullptr) {
@@ -197,7 +197,7 @@ std::vector<ServerApp::OutboundEvent> ServerApp::HandleCastSkill(
 }
 
 std::vector<ServerApp::OutboundEvent> ServerApp::HandlePickup(
-    Session* session, const shared::PickupRequest& pickup_request) {
+    const Session* session, const shared::PickupRequest& pickup_request) {
   const PlayerAndScene player_and_scene = FindBoundPlayerAndScene(session);
   if (player_and_scene.player == nullptr || player_and_scene.scene == nullptr) {
     return {};
