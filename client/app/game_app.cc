@@ -53,7 +53,8 @@ void GameApp::HandleEnterSceneSnapshot(
   model_root_.player_model().ApplyEnterSceneSnapshot(snapshot);
   model_root_.scene_state_model().SetSceneId(snapshot.scene_id);
 
-  for (const shared::VisibleEntitySnapshot& entity : snapshot.visible_entities) {
+  for (const shared::VisibleEntitySnapshot& entity :
+       snapshot.visible_entities) {
     scene.EnterAoi(entity);
   }
 
@@ -64,7 +65,8 @@ void GameApp::HandleEnterSceneSnapshot(
 void GameApp::HandleSelfState(const protocol::SelfStateMessage& message) {
   model_root_.player_model().ApplySelfState(message);
 
-  Scene* scene = scene_manager_.Find(model_root_.scene_state_model().scene_id());
+  Scene* scene =
+      scene_manager_.Find(model_root_.scene_state_model().scene_id());
   if (scene != nullptr) {
     scene->ApplySelfState(message);
     model_root_.scene_state_model().SetVisibleEntityCount(scene->ViewCount());
@@ -74,7 +76,8 @@ void GameApp::HandleSelfState(const protocol::SelfStateMessage& message) {
 }
 
 void GameApp::HandleAoiEnter(const protocol::AoiEnterMessage& message) {
-  Scene* scene = scene_manager_.Find(model_root_.scene_state_model().scene_id());
+  Scene* scene =
+      scene_manager_.Find(model_root_.scene_state_model().scene_id());
   if (scene == nullptr) {
     AppendProtocolSummary("aoi_enter");
     return;
@@ -86,7 +89,8 @@ void GameApp::HandleAoiEnter(const protocol::AoiEnterMessage& message) {
 }
 
 void GameApp::HandleAoiLeave(const protocol::AoiLeaveMessage& message) {
-  Scene* scene = scene_manager_.Find(model_root_.scene_state_model().scene_id());
+  Scene* scene =
+      scene_manager_.Find(model_root_.scene_state_model().scene_id());
   if (scene == nullptr) {
     AppendProtocolSummary("aoi_leave");
     return;
@@ -122,7 +126,8 @@ void GameApp::Render() {}
 void GameApp::UpdateDevPanel() {
   DevPanelSnapshot snapshot;
   snapshot.scene_id = model_root_.scene_state_model().scene_id();
-  snapshot.entity_count = model_root_.scene_state_model().visible_entity_count();
+  snapshot.entity_count =
+      model_root_.scene_state_model().visible_entity_count();
   snapshot.player_position = model_root_.player_model().position();
   snapshot.recent_protocol_summaries = recent_protocol_summaries_;
   dev_panel_.Update(std::move(snapshot));
