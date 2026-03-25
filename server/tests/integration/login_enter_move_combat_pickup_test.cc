@@ -32,6 +32,12 @@ GameConfig MakeClosedLoopConfig() {
   return config;
 }
 
+GameConfig MakeAoiBoundaryConfig() {
+  GameConfig config = MakeClosedLoopConfig();
+  config.monster_spawns.push_back(MonsterSpawn{.monster_template_id = 2001});
+  return config;
+}
+
 std::optional<shared::EnterSceneSnapshot> FindSnapshot(
     const std::vector<ServerApp::OutboundEvent>& events) {
   for (const ServerApp::OutboundEvent& event : events) {
@@ -204,6 +210,59 @@ TEST(ClosedLoopIntegrationTest, LoginEnterMoveCombatAndPickupStayInSync) {
   EXPECT_EQ(game_app.dev_panel().snapshot().entity_count, 1U);
   EXPECT_EQ(game_app.dev_panel().snapshot().recent_protocol_summaries.back(),
             "inventory_delta");
+}
+
+TEST(ClosedLoopIntegrationTest, MoveEnteringAoiKeepsClientSceneInSync) {
+  ConfigManager config_manager;
+  config_manager.Load(MakeAoiBoundaryConfig());
+
+  ServerApp server_app(config_manager);
+  ASSERT_TRUE(server_app.Init());
+
+  client::GameApp game_app;
+  Session session(201);
+
+  const shared::LoginResponse login =
+      server_app.Login(&session, shared::LoginRequest{"hero", "pw"});
+  ASSERT_EQ(login.error_code, shared::ErrorCode::kOk);
+
+  const std::vector<ServerApp::OutboundEvent> enter_events = server_app.EnterScene(
+      &session, shared::EnterSceneRequest{login.player_id, 1});
+  const std::optional<shared::EnterSceneSnapshot> enter_snapshot =
+      FindSnapshot(enter_events);
+  ASSERT_TRUE(enter_snapshot.has_value());
+  EXPECT_EQ(enter_snapshot->visible_entities.size(), 2U);
+
+  EnqueueClientMessages(&game_app, enter_events);
+  game_app.RunFrame();
+
+  const client::Scene* client_scene =
+      game_app.scene_manager().Find(enter_snapshot->scene_id);
+  ASSERT_NE(client_scene, nullptr);
+  EXPECT_EQ(client_scene->ViewCount(), 2U);
+
+  const std::vector<ServerApp::OutboundEvent> move_events = server_app.HandleMove(
+      &session,
+      shared::MoveRequest{
+          enter_snapshot->controlled_entity_id,
+          shared::ScenePosition{6.0F, 4.0F},
+          1,
+          1000,
+      },
+      1.0F);
+
+  ASSERT_TRUE(std::any_of(
+      move_events.begin(), move_events.end(),
+      [](const ServerApp::OutboundEvent& event) {
+        return std::holds_alternative<ServerApp::AoiEnterEvent>(event);
+      }));
+
+  EnqueueClientMessages(&game_app, move_events);
+  game_app.RunFrame();
+
+  EXPECT_EQ(client_scene->ViewCount(), 3U);
+  EXPECT_EQ(game_app.model_root().scene_state_model().visible_entity_count(),
+            3U);
 }
 
 }  // namespace

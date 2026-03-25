@@ -69,7 +69,9 @@ class ServerApp {
   void BootstrapScene(std::uint32_t scene_id);
   void PrimeControlledEntityRuntime(Player* player);
   PlayerAndScene FindBoundPlayerAndScene(Session* session);
-  std::vector<OutboundEvent> FlushMoveEvents(Player* player, Scene* scene);
+  std::vector<OutboundEvent> FlushMoveEvents(
+      Player* player, Scene* scene,
+      const std::optional<shared::ScenePosition>& previous_position);
   static std::vector<OutboundEvent> BuildEnterSceneEvents(
       const shared::EnterSceneSnapshot& snapshot);
   static shared::InventoryDelta BuildInventoryDelta(

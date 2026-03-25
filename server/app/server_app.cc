@@ -4,6 +4,7 @@
 #include <optional>
 #include <utility>
 
+#include "server/aoi/aoi_system.h"
 #include "server/config/config_validator.h"
 #include "server/ecs/components.h"
 #include "server/entity/entity_factory.h"
@@ -59,6 +60,10 @@ shared::LoginResponse ServerApp::Login(
 
 std::vector<ServerApp::OutboundEvent> ServerApp::EnterScene(
     Session* session, const shared::EnterSceneRequest& enter_scene_request) {
+  if (!protocol_dispatcher_.CanEnterScene(session, enter_scene_request)) {
+    return {};
+  }
+
   BootstrapScene(enter_scene_request.scene_id);
 
   const std::optional<shared::EnterSceneSnapshot> snapshot =
@@ -84,8 +89,14 @@ std::vector<ServerApp::OutboundEvent> ServerApp::HandleMove(
     return {};
   }
 
+  const std::optional<shared::ScenePosition> previous_position =
+      player_and_scene.player->controlled_entity_id().has_value()
+          ? player_and_scene.scene->GetPosition(
+                *player_and_scene.player->controlled_entity_id())
+          : std::nullopt;
   player_and_scene.scene->Tick(&movement_system_, delta_seconds);
-  return FlushMoveEvents(player_and_scene.player, player_and_scene.scene);
+  return FlushMoveEvents(player_and_scene.player, player_and_scene.scene,
+                         previous_position);
 }
 
 std::vector<ServerApp::OutboundEvent> ServerApp::HandleCastSkill(
@@ -262,7 +273,8 @@ ServerApp::PlayerAndScene ServerApp::FindBoundPlayerAndScene(Session* session) {
 }
 
 std::vector<ServerApp::OutboundEvent> ServerApp::FlushMoveEvents(
-    Player* player, Scene* scene) {
+    Player* player, Scene* scene,
+    const std::optional<shared::ScenePosition>& previous_position) {
   if (player == nullptr || scene == nullptr ||
       !player->controlled_entity_id().has_value()) {
     return {};
@@ -283,6 +295,19 @@ std::vector<ServerApp::OutboundEvent> ServerApp::FlushMoveEvents(
       scene->GetPosition(*player->controlled_entity_id());
   if (position.has_value()) {
     events.push_back(SelfStateEvent{*player->controlled_entity_id(), *position});
+  }
+
+  if (previous_position.has_value() && position.has_value()) {
+    AoiSystem aoi_system;
+    const AoiDiff diff =
+        aoi_system.ComputeEnterLeave(*player->controlled_entity_id(),
+                                     *previous_position, *position, *scene);
+    for (shared::EntityId entity_id : diff.left) {
+      events.push_back(AoiLeaveEvent{entity_id});
+    }
+    for (const shared::VisibleEntitySnapshot& entity : diff.entered) {
+      events.push_back(AoiEnterEvent{entity});
+    }
   }
   return events;
 }
