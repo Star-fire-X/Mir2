@@ -14,7 +14,7 @@ namespace server {
 
 class GmCommandHandler {
  public:
-  bool Teleport(Scene* scene, Player* player,
+  bool Teleport(Scene* scene, const Player* player,
                 const shared::ScenePosition& position) const;
   bool SpawnMonster(Scene* scene, std::uint32_t monster_template_id,
                     shared::EntityId entity_id,

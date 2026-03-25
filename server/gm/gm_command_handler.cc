@@ -8,7 +8,7 @@
 
 namespace server {
 
-bool GmCommandHandler::Teleport(Scene* scene, Player* player,
+bool GmCommandHandler::Teleport(Scene* scene, const Player* player,
                                 const shared::ScenePosition& position) const {
   if (scene == nullptr || player == nullptr ||
       !player->controlled_entity_id().has_value()) {
