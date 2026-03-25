@@ -70,21 +70,19 @@ TEST(ServerBootstrapTest, InvalidEnterSceneRequestDoesNotBootstrapScene) {
       app.Login(&valid_session, shared::LoginRequest{"hero", "pw"});
   ASSERT_EQ(login.error_code, shared::ErrorCode::kOk);
 
-  const std::vector<ServerApp::OutboundEvent> enter_events =
-      app.EnterScene(&valid_session, shared::EnterSceneRequest{login.player_id,
-                                                               1});
+  const std::vector<ServerApp::OutboundEvent> enter_events = app.EnterScene(
+      &valid_session, shared::EnterSceneRequest{login.player_id, 1});
   ASSERT_EQ(enter_events.size(), 1U);
-  ASSERT_TRUE(std::holds_alternative<shared::EnterSceneSnapshot>(
-      enter_events.front()));
+  ASSERT_TRUE(
+      std::holds_alternative<shared::EnterSceneSnapshot>(enter_events.front()));
 
   const shared::EnterSceneSnapshot& snapshot =
       std::get<shared::EnterSceneSnapshot>(enter_events.front());
-  const auto monster_it =
-      std::find_if(snapshot.visible_entities.begin(),
-                   snapshot.visible_entities.end(),
-                   [](const shared::VisibleEntitySnapshot& entity) {
-                     return entity.kind == shared::VisibleEntityKind::kMonster;
-                   });
+  const auto monster_it = std::find_if(
+      snapshot.visible_entities.begin(), snapshot.visible_entities.end(),
+      [](const shared::VisibleEntitySnapshot& entity) {
+        return entity.kind == shared::VisibleEntityKind::kMonster;
+      });
   ASSERT_NE(monster_it, snapshot.visible_entities.end());
   EXPECT_EQ(monster_it->entity_id, shared::EntityId{900000});
 }
