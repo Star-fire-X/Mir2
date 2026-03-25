@@ -6,6 +6,7 @@ add_library(client_runtime STATIC
   protocol/protocol_dispatcher.cc)
 
 target_include_directories(client_runtime PUBLIC ${PROJECT_SOURCE_DIR})
+target_link_libraries(client_runtime PUBLIC asio_headers shared_protocol)
 set_project_warnings(client_runtime)
 
 add_executable(client_app app/client_main.cc)
@@ -20,6 +21,16 @@ if(BUILD_TESTING)
   target_include_directories(network_queue_test PRIVATE ${PROJECT_SOURCE_DIR})
   target_link_libraries(network_queue_test PRIVATE client_runtime GTest::gtest_main)
   set_project_warnings(network_queue_test)
+
+  add_executable(
+    network_runtime_test
+    tests/net/network_runtime_test.cc)
+
+  target_include_directories(network_runtime_test PRIVATE ${PROJECT_SOURCE_DIR})
+  target_link_libraries(network_runtime_test PRIVATE client_runtime
+                                                    server_transport
+                                                    GTest::gtest_main)
+  set_project_warnings(network_runtime_test)
 
   add_executable(
     dispatcher_test
@@ -58,6 +69,7 @@ if(BUILD_TESTING)
 
   include(GoogleTest)
   gtest_discover_tests(network_queue_test)
+  gtest_discover_tests(network_runtime_test)
   gtest_discover_tests(dispatcher_test)
   gtest_discover_tests(entity_mapping_test)
   gtest_discover_tests(inventory_model_test)

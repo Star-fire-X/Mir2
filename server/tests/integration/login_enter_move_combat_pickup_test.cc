@@ -93,18 +93,20 @@ void EnqueueClientMessages(
           }
           if constexpr (std::is_same_v<Payload, ServerApp::SelfStateEvent>) {
             game_app->network_manager().Enqueue(client::protocol::ClientMessage{
-                client::protocol::SelfStateMessage{payload.entity_id,
-                                                   payload.position}});
+                client::protocol::SelfStateMessage{
+                    shared::SelfState{payload.entity_id, payload.position}}});
             return;
           }
           if constexpr (std::is_same_v<Payload, ServerApp::AoiEnterEvent>) {
             game_app->network_manager().Enqueue(client::protocol::ClientMessage{
-                client::protocol::AoiEnterMessage{payload.entity}});
+                client::protocol::AoiEnterMessage{
+                    shared::AoiEnter{payload.entity}}});
             return;
           }
           if constexpr (std::is_same_v<Payload, ServerApp::AoiLeaveEvent>) {
             game_app->network_manager().Enqueue(client::protocol::ClientMessage{
-                client::protocol::AoiLeaveMessage{payload.entity_id}});
+                client::protocol::AoiLeaveMessage{
+                    shared::AoiLeave{payload.entity_id}}});
             return;
           }
           if constexpr (std::is_same_v<Payload, shared::InventoryDelta>) {

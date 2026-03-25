@@ -26,9 +26,9 @@ class Scene {
   void LeaveAoi(shared::EntityId entity_id) { views_.erase(entity_id); }
 
   void ApplySelfState(const protocol::SelfStateMessage& self_state) {
-    EntityView* view = FindView(self_state.entity_id);
+    EntityView* view = FindView(self_state.state.entity_id);
     if (view != nullptr) {
-      view->ApplyDelta(self_state.position);
+      view->ApplyDelta(self_state.state.position);
     }
   }
 

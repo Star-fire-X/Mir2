@@ -1,4 +1,6 @@
+#include <chrono>
 #include <string>
+#include <thread>  // NOLINT(build/c++11)
 #include <vector>
 
 #include "client/app/game_app.h"
@@ -13,12 +15,20 @@ TEST(ClientDispatcherTest, DispatchesQueuedMessagesInArrivalOrder) {
   NetworkManager network_manager;
   network_manager.Enqueue(
       protocol::ClientMessage{protocol::EnterSceneSnapshotMessage{}});
+  network_manager.Enqueue(protocol::ClientMessage{
+      protocol::LoginResponseMessage{}});
+  network_manager.Enqueue(protocol::ClientMessage{
+      protocol::SceneChannelBootstrapMessage{}});
   network_manager.Enqueue(
       protocol::ClientMessage{protocol::SelfStateMessage{}});
   network_manager.Enqueue(protocol::ClientMessage{protocol::AoiEnterMessage{}});
   network_manager.Enqueue(protocol::ClientMessage{protocol::AoiLeaveMessage{}});
   network_manager.Enqueue(
       protocol::ClientMessage{protocol::InventoryDeltaMessage{}});
+  network_manager.Enqueue(
+      protocol::ClientMessage{protocol::CastSkillResultMessage{}});
+  network_manager.Enqueue(
+      protocol::ClientMessage{protocol::PickupResultMessage{}});
 
   ProtocolDispatcher dispatcher;
   std::vector<std::string> dispatch_order;
@@ -26,6 +36,14 @@ TEST(ClientDispatcherTest, DispatchesQueuedMessagesInArrivalOrder) {
   dispatcher.SetEnterSceneSnapshotHandler(
       [&dispatch_order](const protocol::EnterSceneSnapshotMessage&) {
         dispatch_order.push_back("enter_scene_snapshot");
+      });
+  dispatcher.SetLoginResponseHandler(
+      [&dispatch_order](const protocol::LoginResponseMessage&) {
+        dispatch_order.push_back("login_response");
+      });
+  dispatcher.SetSceneChannelBootstrapHandler(
+      [&dispatch_order](const protocol::SceneChannelBootstrapMessage&) {
+        dispatch_order.push_back("scene_channel_bootstrap");
       });
   dispatcher.SetSelfStateHandler(
       [&dispatch_order](const protocol::SelfStateMessage&) {
@@ -43,17 +61,29 @@ TEST(ClientDispatcherTest, DispatchesQueuedMessagesInArrivalOrder) {
       [&dispatch_order](const protocol::InventoryDeltaMessage&) {
         dispatch_order.push_back("inventory_delta");
       });
+  dispatcher.SetCastSkillResultHandler(
+      [&dispatch_order](const protocol::CastSkillResultMessage&) {
+        dispatch_order.push_back("cast_skill_result");
+      });
+  dispatcher.SetPickupResultHandler(
+      [&dispatch_order](const protocol::PickupResultMessage&) {
+        dispatch_order.push_back("pickup_result");
+      });
 
-  for (const protocol::ClientMessage& message : network_manager.Drain()) {
+  for (const protocol::ClientMessage& message : network_manager.DrainInbound()) {
     dispatcher.Dispatch(message);
   }
 
   EXPECT_EQ(dispatch_order, (std::vector<std::string>{
                                 "enter_scene_snapshot",
+                                "login_response",
+                                "scene_channel_bootstrap",
                                 "self_state",
                                 "aoi_enter",
                                 "aoi_leave",
                                 "inventory_delta",
+                                "cast_skill_result",
+                                "pickup_result",
                             }));
 }
 
@@ -64,6 +94,14 @@ TEST(ClientDispatcherTest, RunFramePumpsQueuedNetworkMessagesInArrivalOrder) {
   app.protocol_dispatcher().SetEnterSceneSnapshotHandler(
       [&dispatch_order](const protocol::EnterSceneSnapshotMessage&) {
         dispatch_order.push_back("enter_scene_snapshot");
+      });
+  app.protocol_dispatcher().SetLoginResponseHandler(
+      [&dispatch_order](const protocol::LoginResponseMessage&) {
+        dispatch_order.push_back("login_response");
+      });
+  app.protocol_dispatcher().SetSceneChannelBootstrapHandler(
+      [&dispatch_order](const protocol::SceneChannelBootstrapMessage&) {
+        dispatch_order.push_back("scene_channel_bootstrap");
       });
   app.protocol_dispatcher().SetSelfStateHandler(
       [&dispatch_order](const protocol::SelfStateMessage&) {
@@ -77,25 +115,45 @@ TEST(ClientDispatcherTest, RunFramePumpsQueuedNetworkMessagesInArrivalOrder) {
       [&dispatch_order](const protocol::InventoryDeltaMessage&) {
         dispatch_order.push_back("inventory_delta");
       });
+  app.protocol_dispatcher().SetCastSkillResultHandler(
+      [&dispatch_order](const protocol::CastSkillResultMessage&) {
+        dispatch_order.push_back("cast_skill_result");
+      });
+  app.protocol_dispatcher().SetPickupResultHandler(
+      [&dispatch_order](const protocol::PickupResultMessage&) {
+        dispatch_order.push_back("pickup_result");
+      });
 
   app.network_manager().Enqueue(
       protocol::ClientMessage{protocol::EnterSceneSnapshotMessage{}});
+  app.network_manager().Enqueue(
+      protocol::ClientMessage{protocol::LoginResponseMessage{}});
+  app.network_manager().Enqueue(
+      protocol::ClientMessage{protocol::SceneChannelBootstrapMessage{}});
   app.network_manager().Enqueue(
       protocol::ClientMessage{protocol::SelfStateMessage{}});
   app.network_manager().Enqueue(
       protocol::ClientMessage{protocol::AoiEnterMessage{}});
   app.network_manager().Enqueue(
       protocol::ClientMessage{protocol::InventoryDeltaMessage{}});
+  app.network_manager().Enqueue(
+      protocol::ClientMessage{protocol::CastSkillResultMessage{}});
+  app.network_manager().Enqueue(
+      protocol::ClientMessage{protocol::PickupResultMessage{}});
 
   app.RunFrame();
 
   EXPECT_EQ(dispatch_order, (std::vector<std::string>{
                                 "enter_scene_snapshot",
+                                "login_response",
+                                "scene_channel_bootstrap",
                                 "self_state",
                                 "aoi_enter",
                                 "inventory_delta",
+                                "cast_skill_result",
+                                "pickup_result",
                             }));
-  EXPECT_TRUE(app.network_manager().Drain().empty());
+  EXPECT_TRUE(app.network_manager().DrainInbound().empty());
 }
 
 TEST(ClientDispatcherTest, SameSceneSnapshotReplacesExistingSceneViews) {
@@ -156,6 +214,22 @@ TEST(ClientDispatcherTest, SameSceneSnapshotReplacesExistingSceneViews) {
   EXPECT_EQ(app.model_root().scene_state_model().visible_entity_count(), 1U);
   EXPECT_FLOAT_EQ(app.model_root().player_model().position().x, 8.0F);
   EXPECT_FLOAT_EQ(app.model_root().player_model().position().y, 1.0F);
+}
+
+TEST(ClientDispatcherTest, RunKeepsLoopAliveUntilStop) {
+  GameApp app;
+  bool run_returned = false;
+
+  std::thread run_thread([&app, &run_returned]() {
+    app.Run();
+    run_returned = true;
+  });
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(20));
+  EXPECT_FALSE(run_returned);
+  app.Stop();
+  run_thread.join();
+  EXPECT_TRUE(run_returned);
 }
 
 }  // namespace

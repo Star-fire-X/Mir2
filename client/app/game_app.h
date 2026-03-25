@@ -18,7 +18,10 @@ namespace client {
 class GameApp {
  public:
   GameApp();
+  ~GameApp();
 
+  void Run();
+  void Stop();
   void RunFrame();
 
   NetworkManager& network_manager() { return network_manager_; }
@@ -34,12 +37,17 @@ class GameApp {
 
  private:
   void BindProtocolHandlers();
+  void HandleLoginResponse(const protocol::LoginResponseMessage& message);
+  void HandleSceneChannelBootstrap(
+      const protocol::SceneChannelBootstrapMessage& message);
   void HandleEnterSceneSnapshot(
       const protocol::EnterSceneSnapshotMessage& message);
   void HandleSelfState(const protocol::SelfStateMessage& message);
   void HandleAoiEnter(const protocol::AoiEnterMessage& message);
   void HandleAoiLeave(const protocol::AoiLeaveMessage& message);
   void HandleInventoryDelta(const protocol::InventoryDeltaMessage& message);
+  void HandleCastSkillResult(const protocol::CastSkillResultMessage& message);
+  void HandlePickupResult(const protocol::PickupResultMessage& message);
   void PumpNetwork();
   void HandleInput();
   void UpdateModels();
@@ -57,6 +65,10 @@ class GameApp {
   PlayerController player_controller_;
   SkillController skill_controller_;
   DevPanel dev_panel_;
+  bool running_ = false;
+  bool login_requested_ = false;
+  bool enter_scene_requested_ = false;
+  shared::PlayerId player_id_{};
   std::vector<std::string> recent_protocol_summaries_;
 };
 

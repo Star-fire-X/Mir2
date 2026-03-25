@@ -1,11 +1,34 @@
 #include "client/app/game_app.h"
 
+#include <chrono>
 #include <string>
+#include <thread>  // NOLINT(build/c++11)
 #include <utility>
 
 namespace client {
 
 GameApp::GameApp() { BindProtocolHandlers(); }
+
+GameApp::~GameApp() { Stop(); }
+
+void GameApp::Run() {
+  running_ = true;
+  network_manager_.Start();
+  if (!login_requested_) {
+    network_manager_.QueueOutbound(
+        protocol::OutboundMessage{shared::LoginRequest{"hero", "pw"}});
+    login_requested_ = true;
+  }
+  while (running_) {
+    RunFrame();
+    std::this_thread::sleep_for(std::chrono::milliseconds(16));
+  }
+}
+
+void GameApp::Stop() {
+  running_ = false;
+  network_manager_.Stop();
+}
 
 void GameApp::RunFrame() {
   PumpNetwork();
@@ -18,6 +41,14 @@ void GameApp::RunFrame() {
 }
 
 void GameApp::BindProtocolHandlers() {
+  protocol_dispatcher_.SetLoginResponseHandler(
+      [this](const protocol::LoginResponseMessage& message) {
+        HandleLoginResponse(message);
+      });
+  protocol_dispatcher_.SetSceneChannelBootstrapHandler(
+      [this](const protocol::SceneChannelBootstrapMessage& message) {
+        HandleSceneChannelBootstrap(message);
+      });
   protocol_dispatcher_.SetEnterSceneSnapshotHandler(
       [this](const protocol::EnterSceneSnapshotMessage& message) {
         HandleEnterSceneSnapshot(message);
@@ -38,6 +69,37 @@ void GameApp::BindProtocolHandlers() {
       [this](const protocol::InventoryDeltaMessage& message) {
         HandleInventoryDelta(message);
       });
+  protocol_dispatcher_.SetCastSkillResultHandler(
+      [this](const protocol::CastSkillResultMessage& message) {
+        HandleCastSkillResult(message);
+      });
+  protocol_dispatcher_.SetPickupResultHandler(
+      [this](const protocol::PickupResultMessage& message) {
+        HandlePickupResult(message);
+      });
+}
+
+void GameApp::HandleLoginResponse(
+    const protocol::LoginResponseMessage& message) {
+  if (message.response.error_code == shared::ErrorCode::kOk) {
+    player_id_ = message.response.player_id;
+    if (!enter_scene_requested_) {
+      network_manager_.QueueOutbound(protocol::OutboundMessage{
+          shared::EnterSceneRequest{player_id_, 1}});
+      enter_scene_requested_ = true;
+    }
+    AppendProtocolSummary("login_response");
+    return;
+  }
+  AppendProtocolSummary("login_response_error");
+}
+
+void GameApp::HandleSceneChannelBootstrap(
+    const protocol::SceneChannelBootstrapMessage& message) {
+  if (message.bootstrap.scene_id != 0) {
+    model_root_.scene_state_model().SetSceneId(message.bootstrap.scene_id);
+  }
+  AppendProtocolSummary("scene_channel_bootstrap");
 }
 
 void GameApp::HandleEnterSceneSnapshot(
@@ -84,7 +146,7 @@ void GameApp::HandleAoiEnter(const protocol::AoiEnterMessage& message) {
     return;
   }
 
-  scene->EnterAoi(message.entity);
+  scene->EnterAoi(message.event.entity);
   model_root_.scene_state_model().SetVisibleEntityCount(scene->ViewCount());
   AppendProtocolSummary("aoi_enter");
 }
@@ -97,7 +159,7 @@ void GameApp::HandleAoiLeave(const protocol::AoiLeaveMessage& message) {
     return;
   }
 
-  scene->LeaveAoi(message.entity_id);
+  scene->LeaveAoi(message.event.entity_id);
   model_root_.scene_state_model().SetVisibleEntityCount(scene->ViewCount());
   AppendProtocolSummary("aoi_leave");
 }
@@ -108,8 +170,25 @@ void GameApp::HandleInventoryDelta(
   AppendProtocolSummary("inventory_delta");
 }
 
+void GameApp::HandleCastSkillResult(
+    const protocol::CastSkillResultMessage& message) {
+  if (message.result.error_code == shared::ErrorCode::kOk) {
+    AppendProtocolSummary("cast_skill_result");
+    return;
+  }
+  AppendProtocolSummary("cast_skill_result_error");
+}
+
+void GameApp::HandlePickupResult(const protocol::PickupResultMessage& message) {
+  if (message.result.error_code == shared::ErrorCode::kOk) {
+    AppendProtocolSummary("pickup_result");
+    return;
+  }
+  AppendProtocolSummary("pickup_result_error");
+}
+
 void GameApp::PumpNetwork() {
-  for (const protocol::ClientMessage& message : network_manager_.Drain()) {
+  for (const protocol::ClientMessage& message : network_manager_.DrainInbound()) {
     protocol_dispatcher_.Dispatch(message);
   }
 }

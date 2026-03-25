@@ -7,6 +7,7 @@
 
 #include "gtest/gtest.h"
 #include "shared/protocol/message_ids.h"
+#include "shared/protocol/runtime_messages.h"
 #include "shared/protocol/scene_messages.h"
 #include "shared/types/entity_id.h"
 
@@ -49,9 +50,10 @@ TEST(SharedContractTest, EntityIdIsComparableAndPrintable) {
 }
 
 TEST(SharedContractTest, MessageIdsAreUnique) {
-  constexpr std::array<shared::MessageId, 11> kMessageIds = {
+  constexpr std::array<shared::MessageId, 15> kMessageIds = {
       shared::MessageId::kLoginRequest,
       shared::MessageId::kLoginResponse,
+      shared::MessageId::kSceneChannelBootstrap,
       shared::MessageId::kEnterSceneRequest,
       shared::MessageId::kEnterSceneSnapshot,
       shared::MessageId::kMoveRequest,
@@ -59,6 +61,9 @@ TEST(SharedContractTest, MessageIdsAreUnique) {
       shared::MessageId::kPickupRequest,
       shared::MessageId::kPickupResult,
       shared::MessageId::kInventoryDelta,
+      shared::MessageId::kSelfState,
+      shared::MessageId::kAoiEnter,
+      shared::MessageId::kAoiLeave,
       shared::MessageId::kCastSkillRequest,
       shared::MessageId::kCastSkillResult,
   };
@@ -83,6 +88,17 @@ TEST(SharedContractTest, EnterSceneSnapshotExposesControlledEntityId) {
 TEST(SharedContractTest, VisibleEntitySnapshotCarriesEntityType) {
   EXPECT_TRUE((SharedContractHasVisibleEntityKind<
                shared::VisibleEntitySnapshot>::value));
+}
+
+TEST(SharedContractTest, SceneChannelBootstrapCarriesTransportMetadata) {
+  shared::SceneChannelBootstrap bootstrap;
+  bootstrap.kcp_conv = 77;
+  bootstrap.udp_port = 5001;
+  bootstrap.session_token = "token-abc";
+
+  EXPECT_EQ(bootstrap.kcp_conv, 77U);
+  EXPECT_EQ(bootstrap.udp_port, 5001U);
+  EXPECT_EQ(bootstrap.session_token, "token-abc");
 }
 
 }  // namespace
