@@ -13,6 +13,7 @@
 namespace server {
 
 enum class SaveTrigger : std::uint8_t;
+class Logger;
 class SaveService;
 class Session;
 
@@ -20,6 +21,7 @@ class ProtocolDispatcher {
  public:
   ProtocolDispatcher(PlayerManager* player_manager,
                      SceneManager* scene_manager);
+  void SetLogger(Logger* logger);
 
   shared::LoginResponse HandleLogin(Session* session,
                                     const shared::LoginRequest& login_request);
@@ -50,7 +52,9 @@ class ProtocolDispatcher {
 
   PlayerManager* player_manager_ = nullptr;
   SceneManager* scene_manager_ = nullptr;
+  Logger* logger_ = nullptr;
   std::uint64_t next_player_id_value_ = 10000;
+  std::uint64_t next_trace_id_value_ = 1;
 };
 
 }  // namespace server
