@@ -25,7 +25,7 @@ class ProtocolDispatcher {
 
   shared::LoginResponse HandleLogin(Session* session,
                                     const shared::LoginRequest& login_request);
-  bool CanEnterScene(Session* session,
+  bool CanEnterScene(const Session* session,
                      const shared::EnterSceneRequest& enter_scene_request) const;
 
   std::optional<shared::EnterSceneSnapshot> HandleEnterScene(
@@ -40,7 +40,7 @@ class ProtocolDispatcher {
 
  private:
   Player* FindEnterScenePlayer(
-      Session* session,
+      const Session* session,
       const shared::EnterSceneRequest& enter_scene_request) const;
   CharacterData BuildDefaultCharacter(
       shared::PlayerId player_id,
