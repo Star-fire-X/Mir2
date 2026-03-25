@@ -5,6 +5,7 @@
 #include <iterator>
 #include <optional>
 #include <utility>
+#include <vector>
 
 #include "server/aoi/aoi_system.h"
 #include "server/config/config_validator.h"

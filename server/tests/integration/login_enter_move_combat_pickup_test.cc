@@ -89,21 +89,25 @@ void EnqueueClientMessages(
           if constexpr (std::is_same_v<Payload, shared::EnterSceneSnapshot>) {
             game_app->network_manager().Enqueue(client::protocol::ClientMessage{
                 client::protocol::EnterSceneSnapshotMessage{payload}});
-          } else if constexpr (std::is_same_v<Payload,
-                                              ServerApp::SelfStateEvent>) {
+            return;
+          }
+          if constexpr (std::is_same_v<Payload, ServerApp::SelfStateEvent>) {
             game_app->network_manager().Enqueue(client::protocol::ClientMessage{
                 client::protocol::SelfStateMessage{payload.entity_id,
                                                    payload.position}});
-          } else if constexpr (std::is_same_v<Payload,
-                                              ServerApp::AoiEnterEvent>) {
+            return;
+          }
+          if constexpr (std::is_same_v<Payload, ServerApp::AoiEnterEvent>) {
             game_app->network_manager().Enqueue(client::protocol::ClientMessage{
                 client::protocol::AoiEnterMessage{payload.entity}});
-          } else if constexpr (std::is_same_v<Payload,
-                                              ServerApp::AoiLeaveEvent>) {
+            return;
+          }
+          if constexpr (std::is_same_v<Payload, ServerApp::AoiLeaveEvent>) {
             game_app->network_manager().Enqueue(client::protocol::ClientMessage{
                 client::protocol::AoiLeaveMessage{payload.entity_id}});
-          } else if constexpr (std::is_same_v<Payload,
-                                              shared::InventoryDelta>) {
+            return;
+          }
+          if constexpr (std::is_same_v<Payload, shared::InventoryDelta>) {
             game_app->network_manager().Enqueue(client::protocol::ClientMessage{
                 client::protocol::InventoryDeltaMessage{payload}});
           }

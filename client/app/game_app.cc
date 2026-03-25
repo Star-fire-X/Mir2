@@ -1,5 +1,6 @@
 #include "client/app/game_app.h"
 
+#include <string>
 #include <utility>
 
 namespace client {
